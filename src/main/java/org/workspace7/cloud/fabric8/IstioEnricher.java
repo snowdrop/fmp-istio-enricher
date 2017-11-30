@@ -14,6 +14,7 @@ import io.fabric8.maven.enricher.api.BaseEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
 import io.fabric8.openshift.api.model.DeploymentConfigBuilder;
 import io.fabric8.openshift.api.model.DeploymentConfigSpecBuilder;
+import io.fabric8.openshift.api.model.TemplateBuilder;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
@@ -223,6 +224,16 @@ public class IstioEnricher extends BaseEnricher {
         for (int i = 0; i < proxyArgs.length; i++) {
             sidecarArgs.add(proxyArgs[i]);
         }
+
+        builder.accept(new TypedVisitor<TemplateBuilder>() {
+            public void visit(TemplateBuilder templateBuilder) {
+                templateBuilder
+                    .withMetadata(new ObjectMetaBuilder()
+                        .addToAnnotations("sidecar.istio.io/status","injected-version-releng@0d29a2c0d15f-0.2.12-998e0e00d375688bcb2af042fc81a60ce5264009")
+                        .build())
+                    .build();
+            }
+        });
 
         builder.accept(new TypedVisitor<PodSpecBuilder>() {
               public void visit(PodSpecBuilder podSpecBuilder) {
