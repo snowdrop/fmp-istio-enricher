@@ -225,12 +225,12 @@ public class IstioEnricher extends BaseEnricher {
             sidecarArgs.add(proxyArgs[i]);
         }
 
-        builder.accept(new TypedVisitor<TemplateBuilder>() {
-            public void visit(TemplateBuilder templateBuilder) {
-                templateBuilder
-                    .withMetadata(new ObjectMetaBuilder()
-                        .addToAnnotations("sidecar.istio.io/status","injected-version-releng@0d29a2c0d15f-0.2.12-998e0e00d375688bcb2af042fc81a60ce5264009")
-                        .build())
+        builder.accept(new TypedVisitor<DeploymentConfigBuilder>() {
+            public void visit(DeploymentConfigBuilder deploymentConfigBuilder) {
+                deploymentConfigBuilder
+                    .editOrNewMetadata()
+                      .addToAnnotations("sidecar.istio.io/status", "injected-version-releng@0d29a2c0d15f-0.2.12-998e0e00d375688bcb2af042fc81a60ce5264009")
+                      .endMetadata()
                     .build();
             }
         });
