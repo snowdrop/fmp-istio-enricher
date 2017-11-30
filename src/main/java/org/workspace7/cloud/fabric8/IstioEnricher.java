@@ -225,38 +225,36 @@ public class IstioEnricher extends BaseEnricher {
         }
 
         builder.accept(new TypedVisitor<PodSpecBuilder>() {
-                           public void visit(PodSpecBuilder podSpecBuilder) {
-                               if ("yes".equalsIgnoreCase(getConfig(Config.enabled))) {
-                                   log.info("Adding Istio proxy");
-                                   String initContainerJson = buildInitContainers();
-                                   sidecarArgs.add("--passthrough");
-                                   sidecarArgs.add("8080");
+              public void visit(PodSpecBuilder podSpecBuilder) {
+                  if ("yes".equalsIgnoreCase(getConfig(Config.enabled))) {
+                      log.info("Adding Istio proxy");
+                      String initContainerJson = buildInitContainers();
+                      sidecarArgs.add("--passthrough");
+                      sidecarArgs.add("8080");
 
-                                   podSpecBuilder
-                                       // Add Istio Proxy, Volumes and Secret
-                                       .addNewContainer()
-                                       .withName(getConfig(Config.proxyName))
-                                       .withResources(new ResourceRequirements())
-                                       .withTerminationMessagePath("/dev/termination-log")
-                                       .withImage(getConfig(Config.proxyImage))
-                                       .withImagePullPolicy(getConfig(Config.imagePullPolicy))
-                                       .withArgs(sidecarArgs)
-                                       .withEnv(proxyEnvVars())
-                                       .withSecurityContext(new SecurityContextBuilder()
-                                           .withRunAsUser(1337l)
-                                           .withPrivileged(true)
-                                           .withReadOnlyRootFilesystem(false)
-                                           .build())
-                                       .withVolumeMounts(istioVolumeMounts())
-                                       .endContainer()
-                                       .withVolumes(istioVolumes())
-                                       // Add Istio Init container and Core Dump
-                                       .withInitContainers(istioInitContainer())
-                                       .withInitContainers(coreDumpInitContainer());
-                               }
-                           }
-                       }
-            );
+                      podSpecBuilder
+                          // Add Istio Proxy, Volumes and Secret
+                          .addNewContainer()
+                          .withName(getConfig(Config.proxyName))
+                          .withResources(new ResourceRequirements())
+                          .withTerminationMessagePath("/dev/termination-log")
+                          .withImage(getConfig(Config.proxyImage))
+                          .withImagePullPolicy(getConfig(Config.imagePullPolicy))
+                          .withArgs(sidecarArgs)
+                          .withEnv(proxyEnvVars())
+                          .withSecurityContext(new SecurityContextBuilder()
+                              .withRunAsUser(1337l)
+                              .withPrivileged(true)
+                              .withReadOnlyRootFilesystem(false)
+                              .build())
+                          .withVolumeMounts(istioVolumeMounts())
+                          .endContainer()
+                          .withVolumes(istioVolumes())
+                          // Add Istio Init container and Core Dump
+                          .withInitContainers(istioInitContainer(), coreDumpInitContainer());
+                  }
+              }
+          });
     }
 
     protected Container istioInitContainer() {
