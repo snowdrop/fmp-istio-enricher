@@ -213,13 +213,125 @@ public class IstioEnricher extends BaseEnricher {
                    defaultMode: 420
                    optional: true
                    secretName: istio.default
+    */
 
-     */
+    @Override
+    public void addMissingResources(KubernetesListBuilder builder) {
+
+        String[] proxyArgs = getConfig(Config.proxyArgs).split(",");
+        List<String> sidecarArgs = new ArrayList<>();
+        for (int i = 0; i < proxyArgs.length; i++) {
+            sidecarArgs.add(proxyArgs[i]);
+        }
+
+        builder.accept(new TypedVisitor<PodSpecBuilder>() {
+                           public void visit(PodSpecBuilder podSpecBuilder) {
+                               if ("yes".equalsIgnoreCase(getConfig(Config.enabled))) {
+                                   log.info("Adding Istio proxy");
+                                   String initContainerJson = buildInitContainers();
+                                   sidecarArgs.add("--passthrough");
+                                   sidecarArgs.add("8080");
+
+                                   podSpecBuilder
+                                       // Add Istio Proxy, Volumes and Secret
+                                       .addNewContainer()
+                                       .withName(getConfig(Config.proxyName))
+                                       .withResources(new ResourceRequirements())
+                                       .withTerminationMessagePath("/dev/termination-log")
+                                       .withImage(getConfig(Config.proxyImage))
+                                       .withImagePullPolicy(getConfig(Config.imagePullPolicy))
+                                       .withArgs(sidecarArgs)
+                                       .withEnv(proxyEnvVars())
+                                       .withSecurityContext(new SecurityContextBuilder()
+                                           .withRunAsUser(1337l)
+                                           .withPrivileged(true)
+                                           .withReadOnlyRootFilesystem(false)
+                                           .build())
+                                       .withVolumeMounts(istioVolumeMounts())
+                                       .endContainer()
+                                       .withVolumes(istioVolumes())
+                                       // Add Istio Init container and Core Dump
+                                       .withInitContainers(istioInitContainer())
+                                       .withInitContainers(coreDumpInitContainer());
+                               }
+                           }
+                       }
+            );
+    }
+
+    protected Container istioInitContainer() {
+        /*
+          .put("name", "istio-init")
+          .put("image", getConfig(Config.initImage))
+          .put("imagePullPolicy", "IfNotPresent")
+          .put("resources", new JsonObject())
+          .put("terminationMessagePath", "/dev/termination-log")
+          .put("terminationMessagePolicy", "File")
+          .put("args", new JsonArray()
+              .add("-p")
+              .add("15001")
+              .add("-u")
+              .add("1337"))
+          .put("securityContext",
+              new JsonObject()
+                  .put("capabilities",
+                      new JsonObject()
+                          .put("add", new JsonArray().add("NET_ADMIN")))
+                  .put("privileged",true));
+         */
+
+        return new ContainerBuilder()
+            .withName("istio-init")
+            .withImage( getConfig(Config.initImage))
+            .withImagePullPolicy("IfNotPresent")
+            .withTerminationMessagePath("/dev/termination-log")
+            .withTerminationMessagePolicy("File")
+            .withArgs("-p","15001","-u","1337")
+            .withSecurityContext(new SecurityContextBuilder()
+                .withPrivileged(true)
+                .withCapabilities(new CapabilitiesBuilder()
+                    .addToAdd("NET_ADMIN")
+                    .build())
+                .build())
+            .build();
+    }
+
+    protected Container coreDumpInitContainer() {
+        /* Enable Core Dump
+         *  args:
+         *   - '-c'
+         *   - >-
+         *     sysctl -w kernel.core_pattern=/etc/istio/proxy/core.%e.%p.%t &&
+         *     ulimit -c unlimited
+         * command:
+         *   - /bin/sh
+         * image: alpine
+         * imagePullPolicy: IfNotPresent
+         * name: enable-core-dump
+         * resources: {}
+         * securityContext:
+         *   privileged: true
+         * terminationMessagePath: /dev/termination-log
+         * terminationMessagePolicy: File
+         */
+        return new ContainerBuilder()
+            .withName("enable-core-dump")
+            .withImage( getConfig(Config.coreDumpImage))
+            .withImagePullPolicy("IfNotPresent")
+            .withCommand("/bin/sh")
+            .withArgs("-c","-sysctl -w kernel.core_pattern=/etc/istio/proxy/core.%e.%p.%t && ulimit -c unlimited")
+            .withTerminationMessagePath("/dev/termination-log")
+            .withTerminationMessagePolicy("File")
+            .withSecurityContext(new SecurityContextBuilder()
+                .withPrivileged(true)
+                .build())
+            .build();
+    }
+
     //TODO - need to check if istio proxy side car is already there
     //TODO - adding init-containers to template spec
     //TODO - find out the other container  liveliness/readiness probes
-    @Override
-    public void addMissingResources(KubernetesListBuilder builder) {
+    public void addMissingNotWorkingResources(KubernetesListBuilder builder) {
 
         String[] proxyArgs = getConfig(Config.proxyArgs).split(",");
         List<String> sidecarArgs = new ArrayList<>();
