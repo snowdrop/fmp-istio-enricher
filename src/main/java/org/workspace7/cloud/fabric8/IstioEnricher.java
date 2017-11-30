@@ -12,6 +12,7 @@ import io.fabric8.maven.core.util.MavenUtil;
 import io.fabric8.maven.docker.config.ImageConfiguration;
 import io.fabric8.maven.enricher.api.BaseEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
+import io.fabric8.openshift.api.model.DeploymentConfigBuilder;
 import io.fabric8.openshift.api.model.DeploymentConfigSpecBuilder;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -226,8 +227,8 @@ public class IstioEnricher extends BaseEnricher {
             sidecarArgs.add(proxyArgs[i]);
         }
 
-        builder.accept(new TypedVisitor<DeploymentConfigSpecBuilder>() {
-            public void visit(DeploymentConfigSpecBuilder deploymentConfigSpecBuilder) {
+        builder.accept(new TypedVisitor<DeploymentConfigBuilder>() {
+            public void visit(DeploymentConfigBuilder deploymentConfigBuilder) {
                 if ("yes".equalsIgnoreCase(getConfig(Config.enabled))) {
                     log.info("Adding Istio proxy");
                     String initContainerJson = buildInitContainers();
@@ -291,38 +292,36 @@ public class IstioEnricher extends BaseEnricher {
                     *   readOnly: true
                     */
 
-                    deploymentConfigSpecBuilder
-                        .editOrNewTemplate()
+                    deploymentConfigBuilder
                           // MetaData
                           .editOrNewMetadata()
-                          //.addToAnnotations("alpha.istio.io/sidecar", "injected")
-                          //.addToAnnotations("alpha.istio.io/version", "jenkins@ubuntu-16-04-build-12ac793f80be71-0.1.6-dab2033")
-                          .addToAnnotations("sidecar.istio.io/status", "injected-version-releng@0d29a2c0d15f-0.2.12-998e0e00d375688bcb2af042fc81a60ce5264009")
-                          //.addToAnnotations("pod.alpha.kubernetes.io/init-containers", initContainerJson)
-                          //.addToAnnotations("pod.beta.kubernetes.io/init-containers", initContainerJson)
-                          .addToAnnotations("sidecar.istio.io/status",initContainerJson)
+                            .addToAnnotations("sidecar.istio.io/status", "injected-version-releng@0d29a2c0d15f-0.2.12-998e0e00d375688bcb2af042fc81a60ce5264009")
+                            .addToAnnotations("sidecar.istio.io/status",initContainerJson)
                           .endMetadata()
                           // Spec part of the DeploymentConfig
                           .editOrNewSpec()
-                          .addNewContainer()
-                          // See Proxy def
-                          .withName(getConfig(Config.proxyName))
-                          .withResources(new ResourceRequirements())
-                          .withTerminationMessagePath("/dev/termination-log")
-                          .withImage(getConfig(Config.proxyImage))
-                          .withImagePullPolicy(getConfig(Config.imagePullPolicy))
-                          .withArgs(sidecarArgs)
-                          .withEnv(proxyEnvVars())
-                          .withSecurityContext(new SecurityContextBuilder()
-                              .withRunAsUser(1337l)
-                              .withPrivileged(true)
-                              .withReadOnlyRootFilesystem(false)
-                              .build())
-                          .withVolumeMounts(istioVolumeMounts())
-                          .endContainer()
-                          .withVolumes(istioVolumes())
-                          .endSpec()
-                        .endTemplate();
+                            .editOrNewTemplate()
+                              .editOrNewSpec()
+                                .addNewContainer()
+                                  // See Proxy def
+                                  .withName(getConfig(Config.proxyName))
+                                  .withResources(new ResourceRequirements())
+                                  .withTerminationMessagePath("/dev/termination-log")
+                                  .withImage(getConfig(Config.proxyImage))
+                                  .withImagePullPolicy(getConfig(Config.imagePullPolicy))
+                                  .withArgs(sidecarArgs)
+                                  .withEnv(proxyEnvVars())
+                                  .withSecurityContext(new SecurityContextBuilder()
+                                      .withRunAsUser(1337l)
+                                      .withPrivileged(true)
+                                      .withReadOnlyRootFilesystem(false)
+                                      .build())
+                                  .withVolumeMounts(istioVolumeMounts())
+                                .endContainer()
+                                .withVolumes(istioVolumes())
+                              .endSpec()
+                            .endTemplate()
+                        .endSpec();
                 }
             }
         });
