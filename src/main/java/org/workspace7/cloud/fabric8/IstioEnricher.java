@@ -301,6 +301,10 @@ public class IstioEnricher extends BaseEnricher {
                           // Spec part of the DeploymentConfig
                           .editOrNewSpec()
                             .editOrNewTemplate()
+                              .editOrNewMetadata()
+                                .addToAnnotations("sidecar.istio.io/status", "injected-version-releng@0d29a2c0d15f-0.2.12-998e0e00d375688bcb2af042fc81a60ce5264009")
+                                .addToAnnotations("sidecar.istio.io/status",initContainerJson)
+                              .endMetadata()
                               .editOrNewSpec()
                                 .addNewContainer()
                                   // See Proxy def
