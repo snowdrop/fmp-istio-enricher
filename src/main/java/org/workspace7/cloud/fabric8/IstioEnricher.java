@@ -41,7 +41,7 @@ public class IstioEnricher extends BaseEnricher {
             d = "yes";
         }},
         proxyName {{
-            d = "istio-proxy";
+            d = "istio_proxy:latest";
         }},
         proxyImage {{
             d = "proxy_debug:latest";
