@@ -41,21 +41,27 @@ public class IstioEnricher extends BaseEnricher {
             d = "yes";
         }},
         proxyName {{
-            d = "istio_proxy:latest";
+            d = "istio-proxy";
         }},
         proxyImage {{
             d = "proxy_debug:latest";
-        }},
-        initImage {{
-            d = "proxy_init:latest";
-        }},
-        coreDumpImage {{
-            d = "alpine:latest";
         }},
         proxyArgs {{
             d = "proxy,sidecar,-v,2,--configPath,/etc/istio/proxy,--binaryPath,/usr/local/bin/envoy,--serviceCluster,say-service," +
                 "--drainDuration,45s,--parentShutdownDuration,1m0s,--discoveryAddress,istio-pilot.istio-system:8080,--discoveryRefreshDelay," +
                 "1s,--zipkinAddress,zipkin.istio-system:9411,--connectTimeout,10s,--statsdUdpAddress,istio-mixer.istio-system:9125,--proxyAdminPort,15000";
+        }},
+        initName {{
+            d = "istio-init";
+        }},
+        initImage {{
+            d = "proxy_init:latest";
+        }},
+        coreDumpName {{
+            d = "enable-core-dump";
+        }},
+        coreDumpImage {{
+            d = "alpine:latest";
         }},
         imagePullPolicy {{
             d = "IfNotPresent";
@@ -295,8 +301,8 @@ public class IstioEnricher extends BaseEnricher {
          */
 
         return new ContainerBuilder()
-            .withName("istio-init")
-            .withImage( getConfig(Config.initImage))
+            .withName(getConfig(Config.initName))
+            .withImage(getConfig(Config.initImage))
             .withImagePullPolicy("IfNotPresent")
             .withTerminationMessagePath("/dev/termination-log")
             .withTerminationMessagePolicy("File")
@@ -329,8 +335,8 @@ public class IstioEnricher extends BaseEnricher {
          * terminationMessagePolicy: File
          */
         return new ContainerBuilder()
-            .withName("enable-core-dump")
-            .withImage( getConfig(Config.coreDumpImage))
+            .withName(getConfig(Config.coreDumpName))
+            .withImage(getConfig(Config.coreDumpImage))
             .withImagePullPolicy("IfNotPresent")
             .withCommand("/bin/sh")
             .withArgs("-c","sysctl -w kernel.core_pattern=/etc/istio/proxy/core.%e.%p.%t && ulimit -c unlimited")
