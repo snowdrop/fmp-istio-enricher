@@ -33,10 +33,12 @@ import java.util.Map;
  */
 public class IstioEnricher extends BaseEnricher {
 
+    private static final String ISTIO_ANNOTATION_STATUS = "injected-version-releng@0d29a2c0d15f-0.2.12-998e0e00d375688bcb2af042fc81a60ce5264009";
     private final DeploymentHandler deployHandler;
 
     // Available configuration keys
     private enum Config implements Configs.Key {
+        name,
         enabled {{
             d = "yes";
         }},
@@ -47,7 +49,7 @@ public class IstioEnricher extends BaseEnricher {
             d = "proxy_debug:latest";
         }},
         proxyArgs {{
-            d = "proxy,sidecar,-v,2,--configPath,/etc/istio/proxy,--binaryPath,/usr/local/bin/envoy,--serviceCluster,say-service," +
+            d = "proxy,sidecar,-v,2,--configPath,/etc/istio/proxy,--binaryPath,/usr/local/bin/envoy,--serviceCluster,app-cluster-name," +
                 "--drainDuration,45s,--parentShutdownDuration,1m0s,--discoveryAddress,istio-pilot.istio-system:8080,--discoveryRefreshDelay," +
                 "1s,--zipkinAddress,zipkin.istio-system:9411,--connectTimeout,10s,--statsdUdpAddress,istio-mixer.istio-system:9125,--proxyAdminPort,15000";
         }},
@@ -65,6 +67,9 @@ public class IstioEnricher extends BaseEnricher {
         }},
         imagePullPolicy {{
             d = "IfNotPresent";
+        }},
+        replicaCount {{
+            d = "1";
         }};
 
         public String def() {
@@ -75,7 +80,6 @@ public class IstioEnricher extends BaseEnricher {
     }
 
     public IstioEnricher(EnricherContext buildContext) {
-
         super(buildContext, "fmp-istio-enricher");
         HandlerHub handlerHub = new HandlerHub(buildContext.getProject());
         deployHandler = handlerHub.getDeploymentHandler();
@@ -226,10 +230,17 @@ public class IstioEnricher extends BaseEnricher {
     @Override
     public void addMissingResources(KubernetesListBuilder builder) {
 
+        final String name = getConfig(Config.name, MavenUtil.createDefaultResourceName(getProject()));
+
         String[] proxyArgs = getConfig(Config.proxyArgs).split(",");
         List<String> sidecarArgs = new ArrayList<>();
         for (int i = 0; i < proxyArgs.length; i++) {
-            sidecarArgs.add(proxyArgs[i]);
+            //cluster name defaults to app name a.k.a controller name
+            if("app-cluster-name".equalsIgnoreCase(proxyArgs[i])){
+                sidecarArgs.add(name);
+            }else {
+                sidecarArgs.add(proxyArgs[i]);
+            }
         }
 
         builder.accept(new TypedVisitor<DeploymentBuilder>() {
@@ -238,7 +249,7 @@ public class IstioEnricher extends BaseEnricher {
                     .editOrNewSpec()
                       .editOrNewTemplate()
                         .editOrNewMetadata()
-                          .addToAnnotations("sidecar.istio.io/status", "injected-version-releng@0d29a2c0d15f-0.2.12-998e0e00d375688bcb2af042fc81a60ce5264009")
+                          .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS)
                         .endMetadata()
                       .endTemplate()
                     .endSpec()
