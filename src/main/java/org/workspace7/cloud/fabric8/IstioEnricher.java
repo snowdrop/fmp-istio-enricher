@@ -2,6 +2,7 @@ package org.workspace7.cloud.fabric8;
 
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
 import io.fabric8.kubernetes.api.model.*;
+import io.fabric8.kubernetes.api.model.extensions.DeploymentBuilder;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentSpec;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentSpecBuilder;
 import io.fabric8.maven.core.config.ResourceConfig;
@@ -43,18 +44,18 @@ public class IstioEnricher extends BaseEnricher {
             d = "istio-proxy";
         }},
         proxyImage {{
-            d = "docker.io/istio/proxy_debug:0.2.12";
+            d = "proxy_debug:latest";
         }},
         initImage {{
-            d = "docker.io/istio/proxy_init:0.2.12";
+            d = "proxy_init:latest";
         }},
         coreDumpImage {{
-            d = "alpine";
+            d = "alpine:latest";
         }},
         proxyArgs {{
             d = "proxy,sidecar,-v,2,--configPath,/etc/istio/proxy,--binaryPath,/usr/local/bin/envoy,--serviceCluster,helloworld," +
                 "--drainDuration,45s,--parentShutdownDuration,1m0s,--discoveryAddress,istio-pilot.istio-system:8080,--discoveryRefreshDelay," +
-                "1s,--zipkinAddress,zipkin.istio-system:9411,--connectTimeout,10s,--statsdUdpAddress,istio-mixer.istio-system:9125,--proxyAdminPort,\"15000\"";
+                "1s,--zipkinAddress,zipkin.istio-system:9411,--connectTimeout,10s,--statsdUdpAddress,istio-mixer.istio-system:9125,--proxyAdminPort,15000";
         }},
         imagePullPolicy {{
             d = "IfNotPresent";
@@ -225,13 +226,17 @@ public class IstioEnricher extends BaseEnricher {
             sidecarArgs.add(proxyArgs[i]);
         }
 
-        builder.accept(new TypedVisitor<DeploymentConfigBuilder>() {
-            public void visit(DeploymentConfigBuilder deploymentConfigBuilder) {
-                deploymentConfigBuilder
-                    .editOrNewMetadata()
-                      .addToAnnotations("sidecar.istio.io/status", "injected-version-releng@0d29a2c0d15f-0.2.12-998e0e00d375688bcb2af042fc81a60ce5264009")
-                      .endMetadata()
-                    .build();
+        builder.accept(new TypedVisitor<DeploymentBuilder>() {
+            public void visit(DeploymentBuilder deploymentBuilder) {
+                deploymentBuilder
+                    .editOrNewSpec()
+                      .editOrNewTemplate()
+                        .editOrNewMetadata()
+                          .addToAnnotations("sidecar.istio.io/status", "injected-version-releng@0d29a2c0d15f-0.2.12-998e0e00d375688bcb2af042fc81a60ce5264009")
+                        .endMetadata()
+                      .endTemplate()
+                    .endSpec()
+                .build();
             }
         });
 
@@ -239,9 +244,9 @@ public class IstioEnricher extends BaseEnricher {
               public void visit(PodSpecBuilder podSpecBuilder) {
                   if ("yes".equalsIgnoreCase(getConfig(Config.enabled))) {
                       log.info("Adding Istio proxy");
-                      String initContainerJson = buildInitContainers();
-                      sidecarArgs.add("--passthrough");
-                      sidecarArgs.add("8080");
+                      //String initContainerJson = buildInitContainers();
+                      //sidecarArgs.add("--passthrough");
+                      //sidecarArgs.add("8080");
 
                       podSpecBuilder
                           // Add Istio Proxy, Volumes and Secret
@@ -262,7 +267,7 @@ public class IstioEnricher extends BaseEnricher {
                           .endContainer()
                           .withVolumes(istioVolumes())
                           // Add Istio Init container and Core Dump
-                          .withInitContainers(istioInitContainer(), coreDumpInitContainer());
+                          .withInitContainers(istioInitContainer(),coreDumpInitContainer());
                   }
               }
           });
@@ -328,7 +333,7 @@ public class IstioEnricher extends BaseEnricher {
             .withImage( getConfig(Config.coreDumpImage))
             .withImagePullPolicy("IfNotPresent")
             .withCommand("/bin/sh")
-            .withArgs("-c","-sysctl -w kernel.core_pattern=/etc/istio/proxy/core.%e.%p.%t && ulimit -c unlimited")
+            .withArgs("-c","sysctl -w kernel.core_pattern=/etc/istio/proxy/core.%e.%p.%t && ulimit -c unlimited")
             .withTerminationMessagePath("/dev/termination-log")
             .withTerminationMessagePolicy("File")
             .withSecurityContext(new SecurityContextBuilder()
