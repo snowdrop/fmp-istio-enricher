@@ -7,16 +7,11 @@ import io.fabric8.maven.core.handler.DeploymentHandler;
 import io.fabric8.maven.core.handler.HandlerHub;
 import io.fabric8.maven.core.util.Configs;
 import io.fabric8.maven.core.util.MavenUtil;
-import io.fabric8.maven.docker.config.AssemblyConfiguration;
 import io.fabric8.maven.docker.config.BuildImageConfiguration;
 import io.fabric8.maven.docker.config.ImageConfiguration;
 import io.fabric8.maven.enricher.api.BaseEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
-import io.fabric8.openshift.api.model.ImageStream;
-import io.fabric8.openshift.api.model.ImageStreamBuilder;
-import io.fabric8.openshift.api.model.ImageStreamListBuilder;
-import io.fabric8.openshift.api.model.ImageStreamSpecBuilder;
-import org.apache.maven.plugin.MojoExecutionException;
+import io.fabric8.openshift.api.model.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -295,11 +290,54 @@ public class IstioEnricher extends BaseEnricher {
               }
           });
 
-        builder.accept(new TypedVisitor<ImageStreamListBuilder>() {
-            public void visit(ImageStreamListBuilder images) {
-                images.addAllToItems(istioImageStream()).build();
+        // TODO - Check if it already exists before to add it to the Kubernetes List
+        // Add ImageStreams about Istio Proxy, Istio Init and Core Dump
+        builder.addAllToImageStreamItems(istioImageStream()).build();
+
+        // Add Missing triggers
+        builder.accept(new TypedVisitor<DeploymentConfigBuilder>() {
+            public void visit(DeploymentConfigBuilder deploymentConfigBuilder) {
+                deploymentConfigBuilder.editOrNewSpec()
+                    .withTriggers()
+                      /*
+                       - imageChangeParams:
+                         automatic: true
+                         containerNames:
+                           - istio-init
+                         from:
+                           kind: ImageStreamTag
+                           name: 'proxy_init:latest'
+                           namespace: demo
+                       type: ImageChange
+                       */
+                      .addNewTrigger()
+                        .withType("ImageChange")
+                        .withNewImageChangeParams()
+                          .withAutomatic(true)
+                          .withNewFrom()
+                            .withKind("ImageStreamTag")
+                            .withName(getConfig(Config.initImageStreamName))
+                          .endFrom()
+                          .withContainerNames(getConfig(Config.initName))
+                        .endImageChangeParams()
+                      .endTrigger()
+                      .addNewTrigger()
+                        .withType("ImageChange")
+                        .withNewImageChangeParams()
+                          .withAutomatic(true)
+                          .withNewFrom()
+                            .withKind("ImageStreamTag")
+                            .withName(getConfig(Config.coreDumpImageStreamName))
+                          .endFrom()
+                          .withContainerNames("enable-core-dump")
+                        .endImageChangeParams()
+                      .endTrigger()
+                    .endSpec()
+                    .build();
             }
         });
+
+
     }
 
     /*
@@ -353,6 +391,24 @@ public class IstioEnricher extends BaseEnricher {
                 .endFrom()
                 .withName("latest")
               .endTag()
+            .endSpec()
+            .build();
+        imageStreams.add(imageStreamBuilder.build());
+
+        imageStreamBuilder = new ImageStreamBuilder();
+        imageStreamBuilder
+            .withNewMetadata()
+            .withName(getConfig(Config.proxyImageStreamName))
+            .endMetadata()
+
+            .withNewSpec()
+            .addNewTag()
+            .withNewFrom()
+            .withKind("DockerImage")
+            .withName(getConfig(Config.proxyDockerImageName))
+            .endFrom()
+            .withName("latest")
+            .endTag()
             .endSpec()
             .build();
         imageStreams.add(imageStreamBuilder.build());
