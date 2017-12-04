@@ -548,7 +548,7 @@ public class IstioEnricher extends BaseEnricher {
         //POD_IP
         EnvVarSource podIpVarSource = new EnvVarSource();
         podIpVarSource.setFieldRef(new ObjectFieldSelector(null, "status.podIP"));
-        envVars.add(new EnvVar("POD_IP", null, podIpVarSource));
+        envVars.add(new EnvVar("INSTANCE_IP", null, podIpVarSource));
 
         return envVars;
     }
