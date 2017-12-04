@@ -7,10 +7,16 @@ import io.fabric8.maven.core.handler.DeploymentHandler;
 import io.fabric8.maven.core.handler.HandlerHub;
 import io.fabric8.maven.core.util.Configs;
 import io.fabric8.maven.core.util.MavenUtil;
+import io.fabric8.maven.docker.config.AssemblyConfiguration;
 import io.fabric8.maven.docker.config.BuildImageConfiguration;
 import io.fabric8.maven.docker.config.ImageConfiguration;
 import io.fabric8.maven.enricher.api.BaseEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
+import io.fabric8.openshift.api.model.ImageStream;
+import io.fabric8.openshift.api.model.ImageStreamBuilder;
+import io.fabric8.openshift.api.model.ImageStreamListBuilder;
+import io.fabric8.openshift.api.model.ImageStreamSpecBuilder;
+import org.apache.maven.plugin.MojoExecutionException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -289,7 +295,51 @@ public class IstioEnricher extends BaseEnricher {
               }
           });
 
-        getContext().getImages().addAll(istioImages());
+        builder.accept(new TypedVisitor<ImageStreamListBuilder>() {
+            public void visit(ImageStreamListBuilder images) {
+                images.addAllToItems(istioImageStream()).build();
+            }
+        });
+    }
+
+    /*
+     *
+       kind: ImageStream
+       metadata:
+         generation: 1
+         name: proxy_debug
+         namespace: demo
+       spec:
+         tags:
+         - from:
+             kind: DockerImage
+             name: docker.io/istio/proxy_debug:0.2.12
+           generation: 1
+           name: latest
+           referencePolicy:
+             type: Source
+     */
+    protected List<ImageStream> istioImageStream() {
+        List<ImageStream> imageStreams = new ArrayList<>();
+        ImageStreamBuilder builder = new ImageStreamBuilder();
+        builder
+            .withNewMetadata()
+              .withName(getConfig(Config.initImageStreamName))
+            .endMetadata()
+
+            .withNewSpec()
+              .addNewTag()
+                 .withNewFrom()
+                    .withKind("DockerImage")
+                    .withName(getConfig(Config.initDockerImageName))
+                 .endFrom()
+                 .withName("latest") // TODO : Specify it as parameter
+              .endTag()
+            .endSpec()
+            .build();
+
+        imageStreams.add(builder.build());
+        return imageStreams;
     }
 
     protected Container istioInitContainer() {
