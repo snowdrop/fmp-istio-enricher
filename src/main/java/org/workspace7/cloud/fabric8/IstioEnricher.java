@@ -321,8 +321,8 @@ public class IstioEnricher extends BaseEnricher {
      */
     protected List<ImageStream> istioImageStream() {
         List<ImageStream> imageStreams = new ArrayList<>();
-        ImageStreamBuilder builder = new ImageStreamBuilder();
-        builder
+        ImageStreamBuilder imageStreamBuilder = new ImageStreamBuilder();
+        imageStreamBuilder
             .withNewMetadata()
               .withName(getConfig(Config.initImageStreamName))
             .endMetadata()
@@ -337,8 +337,26 @@ public class IstioEnricher extends BaseEnricher {
               .endTag()
             .endSpec()
             .build();
+        imageStreams.add(imageStreamBuilder.build());
 
-        imageStreams.add(builder.build());
+        imageStreamBuilder = new ImageStreamBuilder();
+        imageStreamBuilder
+            .withNewMetadata()
+              .withName(getConfig(Config.coreDumpImageStreamName))
+            .endMetadata()
+
+            .withNewSpec()
+              .addNewTag()
+                .withNewFrom()
+                  .withKind("DockerImage")
+                  .withName(getConfig(Config.coreDumpDockerImageName))
+                .endFrom()
+                .withName("latest")
+              .endTag()
+            .endSpec()
+            .build();
+        imageStreams.add(imageStreamBuilder.build());
+
         return imageStreams;
     }
 
