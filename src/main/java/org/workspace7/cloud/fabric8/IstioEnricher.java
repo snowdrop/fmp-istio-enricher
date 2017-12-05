@@ -293,18 +293,7 @@ public class IstioEnricher extends BaseEnricher {
         builder.accept(new TypedVisitor<DeploymentConfigBuilder>() {
             public void visit(DeploymentConfigBuilder deploymentConfigBuilder) {
                 deploymentConfigBuilder.editOrNewSpec()
-                    .withTriggers()
-                      /*
-                       - imageChangeParams:
-                         automatic: true
-                         containerNames:
-                           - istio-init
-                         from:
-                           kind: ImageStreamTag
-                           name: 'proxy_init:latest'
-                           namespace: demo
-                       type: ImageChange
-                       */
+                      //.withTriggers()
                       .addNewTrigger()
                         .withType("ImageChange")
                         .withNewImageChangeParams()
@@ -326,6 +315,28 @@ public class IstioEnricher extends BaseEnricher {
                           .endFrom()
                           .withContainerNames("enable-core-dump")
                         .endImageChangeParams()
+                      .endTrigger()
+                      .addNewTrigger()
+                        .withType("ImageChange")
+                        .withNewImageChangeParams()
+                          .withAutomatic(true)
+                          .withNewFrom()
+                            .withKind("ImageStreamTag")
+                            .withName(getConfig(Config.proxyImageStreamName) + ":latest")
+                          .endFrom()
+                          .withContainerNames(getConfig(Config.proxyName))
+                        .endImageChangeParams()
+                      .endTrigger()
+                      .addNewTrigger()
+                        .withType("ImageChange")
+                        .withNewImageChangeParams()
+                          .withAutomatic(true)
+                          .withNewFrom()
+                            .withKind("ImageStreamTag")
+                            .withName("say-service:latest")
+                          .endFrom()
+                          .withContainerNames("spring-boot")
+                         .endImageChangeParams()
                       .endTrigger()
                     .endSpec();
             }
