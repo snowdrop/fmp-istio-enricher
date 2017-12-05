@@ -9,18 +9,20 @@ import io.fabric8.kubernetes.api.model.extensions.DeploymentBuilder;
 import io.fabric8.maven.core.config.PlatformMode;
 import io.fabric8.maven.core.handler.DeploymentHandler;
 import io.fabric8.maven.core.handler.HandlerHub;
-import io.fabric8.maven.core.util.Configs;
-import io.fabric8.maven.core.util.KubernetesResourceUtil;
-import io.fabric8.maven.core.util.MavenUtil;
-import io.fabric8.maven.core.util.OpenShiftDependencyResources;
+import io.fabric8.maven.core.util.*;
 import io.fabric8.maven.docker.config.BuildImageConfiguration;
 import io.fabric8.maven.docker.config.ImageConfiguration;
 import io.fabric8.maven.enricher.api.BaseEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
 import io.fabric8.maven.plugin.converter.*;
 import io.fabric8.openshift.api.model.*;
+import io.fabric8.utils.Strings;
+import org.apache.maven.plugin.MojoExecutionException;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
+import java.util.logging.Logger;
 
 import static io.fabric8.maven.plugin.mojo.build.ResourceMojo.TARGET_PLATFORM_ANNOTATION;
 
@@ -271,7 +273,7 @@ public class IstioEnricher extends BaseEnricher {
         builder.accept(new TypedVisitor<KubernetesListBuilder>() {
             public void visit(KubernetesListBuilder kubeList) {
 
-                KubernetesList resources = kubeList.build();
+                KubernetesList resources = builder.build();
                 // Adapt list to use OpenShift specific resource objects
                 KubernetesList openShiftResources = convertToOpenShiftResources(resources);
                 DeploymentConfig dc = null;
