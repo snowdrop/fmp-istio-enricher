@@ -1,25 +1,26 @@
 package org.workspace7.cloud.fabric8;
 
+import io.fabric8.kubernetes.api.KubernetesHelper;
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
 import io.fabric8.kubernetes.api.model.*;
+import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentBuilder;
 import io.fabric8.maven.core.config.PlatformMode;
 import io.fabric8.maven.core.handler.DeploymentHandler;
 import io.fabric8.maven.core.handler.HandlerHub;
 import io.fabric8.maven.core.util.Configs;
 import io.fabric8.maven.core.util.MavenUtil;
+import io.fabric8.maven.core.util.OpenShiftDependencyResources;
 import io.fabric8.maven.docker.config.BuildImageConfiguration;
 import io.fabric8.maven.docker.config.ImageConfiguration;
 import io.fabric8.maven.enricher.api.BaseEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
-import io.fabric8.maven.plugin.converter.DeploymentOpenShiftConverter;
-import io.fabric8.openshift.api.model.DeploymentConfig;
-import io.fabric8.openshift.api.model.DeploymentConfigBuilder;
-import io.fabric8.openshift.api.model.ImageStream;
-import io.fabric8.openshift.api.model.ImageStreamBuilder;
+import io.fabric8.maven.plugin.converter.*;
+import io.fabric8.openshift.api.model.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+
+import static io.fabric8.maven.plugin.mojo.build.ResourceMojo.TARGET_PLATFORM_ANNOTATION;
 
 /**
  * This enricher takes care of adding <a href="https://isito.io">Istio</a> related enrichments to the Kubernetes Deployment
@@ -32,6 +33,11 @@ public class IstioEnricher extends BaseEnricher {
 
     private static final String ISTIO_ANNOTATION_STATUS = "injected-version-releng@0d29a2c0d15f-0.2.12-998e0e00d375688bcb2af042fc81a60ce5264009";
     private final DeploymentHandler deployHandler;
+    private Long openshiftDeployTimeoutSeconds = Long.getLong("3600");
+    private OpenShiftDependencyResources openshiftDependencyResources;
+
+    // Converters for going from Kubernertes objects to openshift objects
+    private Map<String, KubernetesToOpenShiftConverter> openShiftConverters;
 
     private DeploymentOpenShiftConverter deploymentConverter;
 
@@ -91,6 +97,14 @@ public class IstioEnricher extends BaseEnricher {
         super(buildContext, "fmp-istio-enricher");
         HandlerHub handlerHub = new HandlerHub(buildContext.getProject());
         deployHandler = handlerHub.getDeploymentHandler();
+
+        openShiftConverters = new HashMap<>();
+        openShiftConverters.put("ReplicaSet", new ReplicSetOpenShiftConverter());
+        openShiftConverters.put("Deployment", new DeploymentOpenShiftConverter(PlatformMode.auto, openshiftDeployTimeoutSeconds));
+        openShiftConverters.put("DeploymentConfig", new DeploymentConfigOpenShiftConverter(openshiftDeployTimeoutSeconds));
+        openShiftConverters.put("Namespace", new NamespaceOpenShiftConverter());
+
+        openshiftDependencyResources = buildContext.getOpenshiftDependencyResources();
     }
 
     /*
@@ -252,21 +266,48 @@ public class IstioEnricher extends BaseEnricher {
         }
 
         // Add Missing triggers
-        builder.accept(new TypedVisitor<DeploymentBuilder>() {
-            public void visit(DeploymentBuilder deploymentBuilder) {
+        builder.accept(new TypedVisitor<KubernetesListBuilder>() {
+            public void visit(KubernetesListBuilder kubeList) {
 
-                deploymentConverter = new DeploymentOpenShiftConverter(PlatformMode.openshift, Long.getLong("3600"));
-                DeploymentConfig dc = (DeploymentConfig) deploymentConverter.convert(deploymentBuilder.build());
-                DeploymentConfigBuilder dcb = new DeploymentConfigBuilder(dc);
+                KubernetesList resources = kubeList.build();
+                // Adapt list to use OpenShift specific resource objects
+                KubernetesList openShiftResources = convertToOpenShiftResources(resources);
 
-                dcb
-                  .editOrNewSpec()
-                    .editOrNewTemplate()
-                      .editOrNewMetadata()
-                        .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS)
-                      .endMetadata()
-                    .endTemplate()
-                    .withTriggers()
+                KubernetesListBuilder klb = new KubernetesListBuilder(openShiftResources);
+                klb.accept(new TypedVisitor<DeploymentConfigBuilder>() {
+                    @Override
+                    public void visit(DeploymentConfigBuilder dcb) {
+                        dcb
+                          .editOrNewSpec()
+                            .editOrNewTemplate()
+                            .editOrNewMetadata()
+                            .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS)
+                            .endMetadata()
+
+                            .editOrNewSpec()
+                            // Add Istio Proxy, Volumes and Secret
+                            .addNewContainer()
+                            .withName(getConfig(Config.proxyName))
+                            .withResources(new ResourceRequirements())
+                            .withTerminationMessagePath("/dev/termination-log")
+                            .withImage(getConfig(Config.proxyImageStreamName))
+                            .withImagePullPolicy(getConfig(Config.imagePullPolicy))
+                            .withArgs(sidecarArgs)
+                            .withEnv(proxyEnvVars())
+                            .withSecurityContext(new SecurityContextBuilder()
+                                .withRunAsUser(1337l)
+                                .withPrivileged(true)
+                                .withReadOnlyRootFilesystem(false)
+                                .build())
+                            .withVolumeMounts(istioVolumeMounts())
+                            .endContainer()
+                            .withVolumes(istioVolumes())
+                            // Add Istio Init container and Core Dump
+                            .withInitContainers(istioInitContainer(),coreDumpInitContainer())
+                            .endSpec()
+                            .endTemplate()
+
+                            .withTriggers()
                       /*
                        - imageChangeParams:
                          automatic: true
@@ -278,33 +319,34 @@ public class IstioEnricher extends BaseEnricher {
                            namespace: demo
                        type: ImageChange
                        */
-                    .addNewTrigger()
-                      .withType("ImageChange")
-                      .withNewImageChangeParams()
-                        .withAutomatic(true)
-                        .withNewFrom()
-                          .withKind("ImageStreamTag")
-                          .withName(getConfig(Config.initImageStreamName) + ":latest")
-                        .endFrom()
-                        .withContainerNames(getConfig(Config.initName))
-                      .endImageChangeParams()
-                    .endTrigger()
-                    .addNewTrigger()
-                      .withType("ImageChange")
-                      .withNewImageChangeParams()
-                        .withAutomatic(true)
-                        .withNewFrom()
-                          .withKind("ImageStreamTag")
-                          .withName(getConfig(Config.coreDumpImageStreamName) + ":latest")
-                        .endFrom()
-                      .withContainerNames("enable-core-dump")
-                      .endImageChangeParams()
-                    .endTrigger()
-                  .endSpec()
-                  .build();
-            }
-        });
+                            .addNewTrigger()
+                            .withType("ImageChange")
+                            .withNewImageChangeParams()
+                            .withAutomatic(true)
+                            .withNewFrom()
+                            .withKind("ImageStreamTag")
+                            .withName(getConfig(Config.initImageStreamName) + ":latest")
+                            .endFrom()
+                            .withContainerNames(getConfig(Config.initName))
+                            .endImageChangeParams()
+                            .endTrigger()
+                            .addNewTrigger()
+                            .withType("ImageChange")
+                            .withNewImageChangeParams()
+                            .withAutomatic(true)
+                            .withNewFrom()
+                            .withKind("ImageStreamTag")
+                            .withName(getConfig(Config.coreDumpImageStreamName) + ":latest")
+                            .endFrom()
+                            .withContainerNames("enable-core-dump")
+                            .endImageChangeParams()
+                            .endTrigger()
+                          .endSpec()
+                          .build();
+                    }});
+            }});
 
+        /*
         builder.accept(new TypedVisitor<PodSpecBuilder>() {
               public void visit(PodSpecBuilder podSpecBuilder) {
                   if ("yes".equalsIgnoreCase(getConfig(Config.enabled))) {
@@ -335,11 +377,70 @@ public class IstioEnricher extends BaseEnricher {
                           .withInitContainers(istioInitContainer(),coreDumpInitContainer());
                   }
               }
-          });
+          });*/
 
         // TODO - Check if it already exists before to add it to the Kubernetes List
         // Add ImageStreams about Istio Proxy, Istio Init and Core Dump
         builder.addAllToImageStreamItems(istioImageStream()).build();
+    }
+
+    private HasMetadata convertKubernetesItemToOpenShift(HasMetadata item) {
+
+        HasMetadata dependencyResource = openshiftDependencyResources.convertKubernetesItemToOpenShift(item);
+        if (dependencyResource != null) {
+            return dependencyResource;
+        }
+
+        KubernetesToOpenShiftConverter converter = openShiftConverters.get(item.getKind());
+        return converter != null ? converter.convert(item) : item;
+    }
+
+    // Converts the kubernetes resources into OpenShift resources
+    private KubernetesList convertToOpenShiftResources(KubernetesList resources) {
+        KubernetesListBuilder builder = new KubernetesListBuilder();
+        builder.withMetadata(resources.getMetadata());
+        List<HasMetadata> items = resources.getItems();
+        List<HasMetadata> objects = new ArrayList<>();
+        if (items != null) {
+            for (HasMetadata item : items) {
+                if (item instanceof Deployment) {
+                    // if we have a Deployment and a DeploymentConfig of the same name
+                    // since we have a different manifest for OpenShift then lets filter out
+                    // the Kubernetes specific Deployment
+                    String name = KubernetesHelper.getName(item);
+                    if (hasDeploymentConfigNamed(items, name)) {
+                        continue;
+                    }
+                }
+
+                // TODO - To be included
+                // item = openShiftOverrideResources.overrideResource(item);
+
+                HasMetadata converted = convertKubernetesItemToOpenShift(item);
+                if (converted != null && !isTargetPlatformKubernetes(item)) {
+                    objects.add(converted);
+                }
+            }
+        }
+        return builder.build();
+    }
+
+    private boolean isTargetPlatformKubernetes(HasMetadata item) {
+        String targetPlatform = KubernetesHelper.getOrCreateAnnotations(item).get(TARGET_PLATFORM_ANNOTATION);
+        return targetPlatform != null && "kubernetes".equalsIgnoreCase(targetPlatform);
+    }
+
+
+    private boolean hasDeploymentConfigNamed(List<HasMetadata> items, String name) {
+        for (HasMetadata item : items) {
+            if (item instanceof DeploymentConfig) {
+                String dcName = KubernetesHelper.getName(item);
+                if (Objects.equals(name, dcName)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /*
