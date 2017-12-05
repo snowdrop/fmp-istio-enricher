@@ -253,8 +253,7 @@ public class IstioEnricher extends BaseEnricher {
                           .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS)
                         .endMetadata()
                       .endTemplate()
-                    .endSpec()
-                .build();
+                    .endSpec();
             }
         });
 
@@ -289,10 +288,6 @@ public class IstioEnricher extends BaseEnricher {
                   }
               }
           });
-
-        // TODO - Check if it already exists before to add it to the Kubernetes List
-        // Add ImageStreams about Istio Proxy, Istio Init and Core Dump
-        builder.addAllToImageStreamItems(istioImageStream()).build();
 
         // Add Missing triggers
         builder.accept(new TypedVisitor<DeploymentConfigBuilder>() {
@@ -332,12 +327,12 @@ public class IstioEnricher extends BaseEnricher {
                           .withContainerNames("enable-core-dump")
                         .endImageChangeParams()
                       .endTrigger()
-                    .endSpec()
-                    .build();
+                    .endSpec();
             }
         });
-
-
+        // TODO - Check if it already exists before to add it to the Kubernetes List
+        // Add ImageStreams about Istio Proxy, Istio Init and Core Dump
+        builder.addAllToImageStreamItems(istioImageStream()).build();
     }
 
     /*
