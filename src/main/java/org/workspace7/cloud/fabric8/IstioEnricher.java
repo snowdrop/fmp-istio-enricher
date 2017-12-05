@@ -251,6 +251,60 @@ public class IstioEnricher extends BaseEnricher {
             }
         }
 
+        // Add Missing triggers
+        builder.accept(new TypedVisitor<DeploymentBuilder>() {
+            public void visit(DeploymentBuilder deploymentBuilder) {
+
+                deploymentConverter = new DeploymentOpenShiftConverter(PlatformMode.openshift, Long.getLong("3600"));
+                DeploymentConfig dc = (DeploymentConfig) deploymentConverter.convert(deploymentBuilder.build());
+                DeploymentConfigBuilder dcb = new DeploymentConfigBuilder(dc);
+
+                dcb
+                  .editOrNewSpec()
+                    .editOrNewTemplate()
+                      .editOrNewMetadata()
+                        .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS)
+                      .endMetadata()
+                    .endTemplate()
+                    .withTriggers()
+                      /*
+                       - imageChangeParams:
+                         automatic: true
+                         containerNames:
+                           - istio-init
+                         from:
+                           kind: ImageStreamTag
+                           name: 'proxy_init:latest'
+                           namespace: demo
+                       type: ImageChange
+                       */
+                    .addNewTrigger()
+                      .withType("ImageChange")
+                      .withNewImageChangeParams()
+                        .withAutomatic(true)
+                        .withNewFrom()
+                          .withKind("ImageStreamTag")
+                          .withName(getConfig(Config.initImageStreamName) + ":latest")
+                        .endFrom()
+                        .withContainerNames(getConfig(Config.initName))
+                      .endImageChangeParams()
+                    .endTrigger()
+                    .addNewTrigger()
+                      .withType("ImageChange")
+                      .withNewImageChangeParams()
+                        .withAutomatic(true)
+                        .withNewFrom()
+                          .withKind("ImageStreamTag")
+                          .withName(getConfig(Config.coreDumpImageStreamName) + ":latest")
+                        .endFrom()
+                      .withContainerNames("enable-core-dump")
+                      .endImageChangeParams()
+                    .endTrigger()
+                  .endSpec()
+                  .build();
+            }
+        });
+
         builder.accept(new TypedVisitor<PodSpecBuilder>() {
               public void visit(PodSpecBuilder podSpecBuilder) {
                   if ("yes".equalsIgnoreCase(getConfig(Config.enabled))) {
@@ -286,62 +340,6 @@ public class IstioEnricher extends BaseEnricher {
         // TODO - Check if it already exists before to add it to the Kubernetes List
         // Add ImageStreams about Istio Proxy, Istio Init and Core Dump
         builder.addAllToImageStreamItems(istioImageStream()).build();
-
-        // Add Missing triggers
-        builder.accept(new TypedVisitor<DeploymentBuilder>() {
-            public void visit(DeploymentBuilder deploymentBuilder) {
-
-                deploymentConverter = new DeploymentOpenShiftConverter(PlatformMode.openshift, Long.getLong("3600"));
-                DeploymentConfig dc = (DeploymentConfig) deploymentConverter.convert(deploymentBuilder.build());
-                DeploymentConfigBuilder dcb = new DeploymentConfigBuilder(dc);
-
-                dcb
-                  .editOrNewSpec()
-                    .editOrNewTemplate()
-                      .editOrNewMetadata()
-                        .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS)
-                      .endMetadata()
-                    .endTemplate()
-                    .withTriggers()
-                      /*
-                       - imageChangeParams:
-                         automatic: true
-                         containerNames:
-                           - istio-init
-                         from:
-                           kind: ImageStreamTag
-                           name: 'proxy_init:latest'
-                           namespace: demo
-                       type: ImageChange
-                       */
-                      .addNewTrigger()
-                        .withType("ImageChange")
-                        .withNewImageChangeParams()
-                          .withAutomatic(true)
-                          .withNewFrom()
-                            .withKind("ImageStreamTag")
-                            .withName(getConfig(Config.initImageStreamName) + ":latest")
-                          .endFrom()
-                          .withContainerNames(getConfig(Config.initName))
-                        .endImageChangeParams()
-                      .endTrigger()
-                      .addNewTrigger()
-                        .withType("ImageChange")
-                        .withNewImageChangeParams()
-                          .withAutomatic(true)
-                          .withNewFrom()
-                            .withKind("ImageStreamTag")
-                            .withName(getConfig(Config.coreDumpImageStreamName) + ":latest")
-                          .endFrom()
-                          .withContainerNames("enable-core-dump")
-                        .endImageChangeParams()
-                      .endTrigger()
-                  .endSpec()
-                  .build();
-            }
-        });
-
-
     }
 
     /*
