@@ -3,6 +3,7 @@ package org.workspace7.cloud.fabric8;
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentBuilder;
+import io.fabric8.maven.core.config.PlatformMode;
 import io.fabric8.maven.core.handler.DeploymentHandler;
 import io.fabric8.maven.core.handler.HandlerHub;
 import io.fabric8.maven.core.util.Configs;
@@ -11,7 +12,11 @@ import io.fabric8.maven.docker.config.BuildImageConfiguration;
 import io.fabric8.maven.docker.config.ImageConfiguration;
 import io.fabric8.maven.enricher.api.BaseEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
-import io.fabric8.openshift.api.model.*;
+import io.fabric8.maven.plugin.converter.DeploymentOpenShiftConverter;
+import io.fabric8.openshift.api.model.DeploymentConfig;
+import io.fabric8.openshift.api.model.DeploymentConfigBuilder;
+import io.fabric8.openshift.api.model.ImageStream;
+import io.fabric8.openshift.api.model.ImageStreamBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +32,8 @@ public class IstioEnricher extends BaseEnricher {
 
     private static final String ISTIO_ANNOTATION_STATUS = "injected-version-releng@0d29a2c0d15f-0.2.12-998e0e00d375688bcb2af042fc81a60ce5264009";
     private final DeploymentHandler deployHandler;
+
+    private DeploymentOpenShiftConverter deploymentConverter;
 
     // Available configuration keys
     private enum Config implements Configs.Key {
@@ -244,20 +251,6 @@ public class IstioEnricher extends BaseEnricher {
             }
         }
 
-        builder.accept(new TypedVisitor<DeploymentBuilder>() {
-            public void visit(DeploymentBuilder deploymentBuilder) {
-                deploymentBuilder
-                    .editOrNewSpec()
-                      .editOrNewTemplate()
-                        .editOrNewMetadata()
-                          .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS)
-                        .endMetadata()
-                      .endTemplate()
-                    .endSpec()
-                .build();
-            }
-        });
-
         builder.accept(new TypedVisitor<PodSpecBuilder>() {
               public void visit(PodSpecBuilder podSpecBuilder) {
                   if ("yes".equalsIgnoreCase(getConfig(Config.enabled))) {
@@ -295,9 +288,20 @@ public class IstioEnricher extends BaseEnricher {
         builder.addAllToImageStreamItems(istioImageStream()).build();
 
         // Add Missing triggers
-        builder.accept(new TypedVisitor<DeploymentConfigBuilder>() {
-            public void visit(DeploymentConfigBuilder deploymentConfigBuilder) {
-                deploymentConfigBuilder.editOrNewSpec()
+        builder.accept(new TypedVisitor<DeploymentBuilder>() {
+            public void visit(DeploymentBuilder deploymentBuilder) {
+
+                deploymentConverter = new DeploymentOpenShiftConverter(PlatformMode.openshift, Long.getLong("3600"));
+                DeploymentConfig dc = (DeploymentConfig) deploymentConverter.convert(deploymentBuilder.build());
+                DeploymentConfigBuilder dcb = new DeploymentConfigBuilder(dc);
+
+                dcb
+                  .editOrNewSpec()
+                    .editOrNewTemplate()
+                      .editOrNewMetadata()
+                        .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS)
+                      .endMetadata()
+                    .endTemplate()
                     .withTriggers()
                       /*
                        - imageChangeParams:
@@ -332,8 +336,8 @@ public class IstioEnricher extends BaseEnricher {
                           .withContainerNames("enable-core-dump")
                         .endImageChangeParams()
                       .endTrigger()
-                    .endSpec()
-                    .build();
+                  .endSpec()
+                  .build();
             }
         });
 
