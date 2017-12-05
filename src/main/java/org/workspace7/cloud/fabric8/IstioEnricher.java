@@ -268,19 +268,19 @@ public class IstioEnricher extends BaseEnricher {
                       podSpecBuilder
                           // Add Istio Proxy, Volumes and Secret
                           .addNewContainer()
-                          .withName(getConfig(Config.proxyName))
-                          .withResources(new ResourceRequirements())
-                          .withTerminationMessagePath("/dev/termination-log")
-                          .withImage(getConfig(Config.proxyImageStreamName))
-                          .withImagePullPolicy(getConfig(Config.imagePullPolicy))
-                          .withArgs(sidecarArgs)
-                          .withEnv(proxyEnvVars())
-                          .withSecurityContext(new SecurityContextBuilder()
+                            .withName(getConfig(Config.proxyName))
+                            .withResources(new ResourceRequirements())
+                            .withTerminationMessagePath("/dev/termination-log")
+                            .withImage(getConfig(Config.proxyImageStreamName))
+                            .withImagePullPolicy(getConfig(Config.imagePullPolicy))
+                            .withArgs(sidecarArgs)
+                            .withEnv(proxyEnvVars())
+                            .withSecurityContext(new SecurityContextBuilder()
                               .withRunAsUser(1337l)
                               .withPrivileged(true)
                               .withReadOnlyRootFilesystem(false)
                               .build())
-                          .withVolumeMounts(istioVolumeMounts())
+                            .withVolumeMounts(istioVolumeMounts())
                           .endContainer()
                           .withVolumes(istioVolumes())
                           // Add Istio Init container and Core Dump
@@ -292,7 +292,9 @@ public class IstioEnricher extends BaseEnricher {
         // Add Missing triggers
         builder.accept(new TypedVisitor<DeploymentConfigBuilder>() {
             public void visit(DeploymentConfigBuilder deploymentConfigBuilder) {
-                deploymentConfigBuilder.editOrNewSpec()
+                deploymentConfigBuilder
+                    .editOrNewSpec()
+                      .withReplicas(Integer.getInteger(getConfig(Config.replicaCount)))
                       //.withTriggers()
                       .addNewTrigger()
                         .withType("ImageChange")
