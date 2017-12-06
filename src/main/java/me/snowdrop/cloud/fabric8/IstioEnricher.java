@@ -251,18 +251,6 @@ public class IstioEnricher extends BaseEnricher {
             }
         }
 
-        builder.accept(new TypedVisitor<DeploymentBuilder>() {
-            public void visit(DeploymentBuilder deploymentBuilder) {
-                deploymentBuilder
-                    .editOrNewSpec()
-                      .editOrNewTemplate()
-                        .editOrNewMetadata()
-                          .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS)
-                        .endMetadata()
-                      .endTemplate()
-                    .endSpec();
-            }
-        });
 
         builder.accept(new TypedVisitor<PodSpecBuilder>() {
               public void visit(PodSpecBuilder podSpecBuilder) {
@@ -298,14 +286,21 @@ public class IstioEnricher extends BaseEnricher {
             public void visit(DeploymentConfigBuilder deploymentConfigBuilder) {
                 deploymentConfigBuilder
                     .editOrNewSpec()
-                      .withReplicas(Integer.getInteger(getConfig(Config.replicaCount)))
+                      // Add Istio Side car annotation
+                      .editOrNewTemplate()
+                        .editOrNewMetadata()
+                          .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS)
+                        .endMetadata()
+                      .endTemplate()
+                      // Specify the replica count
+                      .withReplicas(Integer.parseInt(getConfig(Config.replicaCount)))
                       //.withTriggers()
                       .addNewTrigger()
                         .withType("ImageChange")
                         .withNewImageChangeParams()
                           .withAutomatic(true)
                           .withNewFrom()
-                            .withKind("ImageStreamTag")git commit -m "Revert code "-a
+                            .withKind("ImageStreamTag")
                             .withName(getConfig(Config.initImageStreamName) + ":" + getConfig(Config.istioVersion))
                           .endFrom()
                           .withContainerNames(getConfig(Config.initName))
