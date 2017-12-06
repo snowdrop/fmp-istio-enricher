@@ -3,6 +3,7 @@ package me.snowdrop.cloud.fabric8;
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentBuilder;
+import io.fabric8.kubernetes.api.model.extensions.ReplicaSetBuilder;
 import io.fabric8.maven.core.handler.DeploymentHandler;
 import io.fabric8.maven.core.handler.HandlerHub;
 import io.fabric8.maven.core.util.Configs;
@@ -266,10 +267,7 @@ public class IstioEnricher extends BaseEnricher {
         builder.accept(new TypedVisitor<PodSpecBuilder>() {
               public void visit(PodSpecBuilder podSpecBuilder) {
                   if ("yes".equalsIgnoreCase(getConfig(Config.enabled))) {
-                      log.info("Adding Istio proxy");
-                      //String initContainerJson = buildInitContainers();
-                      //sidecarArgs.add("--passthrough");
-                      //sidecarArgs.add("8080");
+                      log.info("Adding Istio proxy, init and core-dump");
 
                       podSpecBuilder
                           // Add Istio Proxy, Volumes and Secret
@@ -295,12 +293,19 @@ public class IstioEnricher extends BaseEnricher {
               }
           });
 
+        // Assign Number of replicas
+        builder.accept(new TypedVisitor<ReplicaSetBuilder>() {
+            @Override
+            public void visit(ReplicaSetBuilder b) {
+                b.editOrNewSpec().withReplicas(Integer.getInteger(getConfig(Config.replicaCount))).endSpec();
+            }
+        });
+
         // Add Missing triggers
         builder.accept(new TypedVisitor<DeploymentConfigBuilder>() {
             public void visit(DeploymentConfigBuilder deploymentConfigBuilder) {
                 deploymentConfigBuilder
                     .editOrNewSpec()
-                      .withReplicas(Integer.getInteger(getConfig(Config.replicaCount)))
                       //.withTriggers()
                       .addNewTrigger()
                         .withType("ImageChange")
