@@ -1,4 +1,4 @@
-package org.workspace7.cloud.fabric8;
+package me.snowdrop.cloud.fabric8;
 
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
 import io.fabric8.kubernetes.api.model.*;
