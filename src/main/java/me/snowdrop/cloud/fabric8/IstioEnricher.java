@@ -293,26 +293,19 @@ public class IstioEnricher extends BaseEnricher {
               }
           });
 
-        // Assign Number of replicas
-        builder.accept(new TypedVisitor<ReplicaSetBuilder>() {
-            @Override
-            public void visit(ReplicaSetBuilder b) {
-                b.editOrNewSpec().withReplicas(Integer.getInteger(getConfig(Config.replicaCount))).endSpec();
-            }
-        });
-
         // Add Missing triggers
         builder.accept(new TypedVisitor<DeploymentConfigBuilder>() {
             public void visit(DeploymentConfigBuilder deploymentConfigBuilder) {
                 deploymentConfigBuilder
                     .editOrNewSpec()
+                      .withReplicas(Integer.getInteger(getConfig(Config.replicaCount)))
                       //.withTriggers()
                       .addNewTrigger()
                         .withType("ImageChange")
                         .withNewImageChangeParams()
                           .withAutomatic(true)
                           .withNewFrom()
-                            .withKind("ImageStreamTag")
+                            .withKind("ImageStreamTag")git commit -m "Revert code "-a
                             .withName(getConfig(Config.initImageStreamName) + ":" + getConfig(Config.istioVersion))
                           .endFrom()
                           .withContainerNames(getConfig(Config.initName))
