@@ -34,11 +34,17 @@ public class IstioEnricher extends BaseEnricher {
         enabled {{
             d = "yes";
         }},
+        istioVersion {{
+            d = "0.2.12";
+        }},
+        alpineVersion {{
+            d = "3.5";
+        }},
         proxyName {{
             d = "istio-proxy";
         }},
         proxyDockerImageName {{
-            d = "docker.io/istio/proxy_debug:0.2.12";
+            d = "docker.io/istio/proxy_debug";
         }},
         proxyImageStreamName {{
             d = "proxy_debug";
@@ -52,7 +58,7 @@ public class IstioEnricher extends BaseEnricher {
             d = "istio-init";
         }},
         initDockerImageName {{
-            d = "docker.io/istio/proxy_init:0.2.12";
+            d = "docker.io/istio/proxy_init";
         }},
         initImageStreamName {{
             d = "proxy_init";
@@ -302,7 +308,7 @@ public class IstioEnricher extends BaseEnricher {
                           .withAutomatic(true)
                           .withNewFrom()
                             .withKind("ImageStreamTag")
-                            .withName(getConfig(Config.initImageStreamName) + ":latest")
+                            .withName(getConfig(Config.initImageStreamName) + ":" + getConfig(Config.istioVersion))
                           .endFrom()
                           .withContainerNames(getConfig(Config.initName))
                         .endImageChangeParams()
@@ -313,7 +319,7 @@ public class IstioEnricher extends BaseEnricher {
                           .withAutomatic(true)
                           .withNewFrom()
                             .withKind("ImageStreamTag")
-                            .withName(getConfig(Config.coreDumpImageStreamName) + ":latest")
+                            .withName(getConfig(Config.coreDumpImageStreamName) + ":" + getConfig(Config.alpineVersion))
                           .endFrom()
                           .withContainerNames("enable-core-dump")
                         .endImageChangeParams()
@@ -324,7 +330,7 @@ public class IstioEnricher extends BaseEnricher {
                           .withAutomatic(true)
                           .withNewFrom()
                             .withKind("ImageStreamTag")
-                            .withName(getConfig(Config.proxyImageStreamName) + ":latest")
+                            .withName(getConfig(Config.proxyImageStreamName) + ":" + getConfig(Config.istioVersion))
                           .endFrom()
                           .withContainerNames(getConfig(Config.proxyName))
                         .endImageChangeParams()
@@ -377,9 +383,9 @@ public class IstioEnricher extends BaseEnricher {
               .addNewTag()
                  .withNewFrom()
                     .withKind("DockerImage")
-                    .withName(getConfig(Config.initDockerImageName))
+                    .withName(getConfig(Config.initDockerImageName) + ":" + getConfig(Config.istioVersion))
                  .endFrom()
-                 .withName("latest") // TODO : Specify it as parameter
+                 .withName(getConfig(Config.istioVersion))
               .endTag()
             .endSpec()
             .build();
@@ -395,9 +401,9 @@ public class IstioEnricher extends BaseEnricher {
               .addNewTag()
                 .withNewFrom()
                   .withKind("DockerImage")
-                  .withName(getConfig(Config.coreDumpDockerImageName))
+                  .withName(getConfig(Config.coreDumpDockerImageName) + ":" + getConfig(Config.alpineVersion))
                 .endFrom()
-                .withName("latest")
+                .withName(getConfig(Config.alpineVersion))
               .endTag()
             .endSpec()
             .build();
@@ -406,17 +412,17 @@ public class IstioEnricher extends BaseEnricher {
         imageStreamBuilder = new ImageStreamBuilder();
         imageStreamBuilder
             .withNewMetadata()
-            .withName(getConfig(Config.proxyImageStreamName))
+              .withName(getConfig(Config.proxyImageStreamName))
             .endMetadata()
 
             .withNewSpec()
-            .addNewTag()
-            .withNewFrom()
-            .withKind("DockerImage")
-            .withName(getConfig(Config.proxyDockerImageName))
-            .endFrom()
-            .withName("latest")
-            .endTag()
+              .addNewTag()
+                .withNewFrom()
+                  .withKind("DockerImage")
+                  .withName(getConfig(Config.proxyDockerImageName) + ":" + getConfig(Config.istioVersion))
+                .endFrom()
+                .withName(getConfig(Config.istioVersion))
+              .endTag()
             .endSpec()
             .build();
         imageStreams.add(imageStreamBuilder.build());
