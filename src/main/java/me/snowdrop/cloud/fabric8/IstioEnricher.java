@@ -214,7 +214,7 @@ public class IstioEnricher extends BaseEnricher {
 
         clusterName = getConfig(Config.name, MavenUtil.createDefaultResourceName(getProject()));
 
-        String[] proxyArgs = ProxyArgs.findByRelease(getConfig(Config.istioVersion))q.split(",");
+        String[] proxyArgs = ProxyArgs.findByRelease(getConfig(Config.istioVersion)).split(",");
         List<String> sidecarArgs = new ArrayList<>();
         for (int i = 0; i < proxyArgs.length; i++) {
             //cluster name defaults to app name a.k.a controller name
