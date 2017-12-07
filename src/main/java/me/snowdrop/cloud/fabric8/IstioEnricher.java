@@ -26,7 +26,7 @@ import java.util.List;
  */
 public class IstioEnricher extends BaseEnricher {
 
-    private static final String ISTIO_ANNOTATION_STATUS = "injected-version-releng@0d29a2c0d15f-0.2.12-998e0e00d375688bcb2af042fc81a60ce5264009";
+    private static final String ISTIO_ANNOTATION_STATUS = "injected-version-releng@0d29a2c0d15f-VERSION-998e0e00d375688bcb2af042fc81a60ce5264009";
     private final DeploymentHandler deployHandler;
     private String clusterName;
 
@@ -264,7 +264,7 @@ public class IstioEnricher extends BaseEnricher {
                       // Add Istio Side car annotation
                       .editOrNewTemplate()
                         .editOrNewMetadata()
-                          .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS)
+                          .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS.replace("VERSION",getConfig(Config.istioVersion)))
                         .endMetadata()
                       .endTemplate()
                       // Specify the replica count
