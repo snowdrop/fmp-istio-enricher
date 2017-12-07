@@ -1,7 +1,8 @@
 package me.snowdrop.cloud.fabric8;
 
 public enum ProxyArgs {
-    RELEASE_0_2_12("0.2.12","proxy,sidecar" +
+    RELEASE_0_2_12("0.2.12",
+                            "proxy,sidecar," +
                             "-v,2," +
                             "--configPath,/etc/istio/proxy," +
                             "--binaryPath,/usr/local/bin/envoy," +
@@ -16,7 +17,8 @@ public enum ProxyArgs {
                             "--statsdUdpAddress,istio-mixer.ISTIO_NAMESPACE:9125," +
                             "--proxyAdminPort,15000"),
 
-    RELEASE_0_3_0("0.3.0","proxy,sidecar" +
+    RELEASE_0_3_0("0.3.0",
+                           "proxy,sidecar," +
                            "-v,2," +
                            "--configPath,/etc/istio/proxy," +
                            "--binaryPath,/usr/local/bin/envoy," +
