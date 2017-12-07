@@ -23,6 +23,7 @@ import java.util.List;
  * TODO: once f8-m-p model has initContainers model , then annotations can be moved to templateSpec
  *
  * @author kameshs
+ * @author charles moulliard
  */
 public class IstioEnricher extends BaseEnricher {
 
