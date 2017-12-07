@@ -10,7 +10,6 @@ public enum ProxyArgs {
                             "--drainDuration,45s," +
                             "--parentShutdownDuration,1m0s," +
                             "--discoveryAddress,istio-pilot.ISTIO_NAMESPACE:8080," +
-                            "--discoveryRefreshDelay," +
                             "--discoveryRefreshDelay,1s," +
                             "--zipkinAddress,zipkin.ISTIO_NAMESPACE:9411," +
                             "--connectTimeout,10s," +
@@ -26,7 +25,6 @@ public enum ProxyArgs {
                            "--drainDuration,45s," +
                            "--parentShutdownDuration,1m0s," +
                            "--discoveryAddress,istio-pilot.ISTIO_NAMESPACE:8080," +
-                           "--discoveryRefreshDelay," +
                            "--discoveryRefreshDelay,1s," +
                            "--zipkinAddress,zipkin.ISTIO_NAMESPACE:9411," +
                            "--connectTimeout,10s," +
