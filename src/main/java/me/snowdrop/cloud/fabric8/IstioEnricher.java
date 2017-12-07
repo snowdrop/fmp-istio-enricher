@@ -55,11 +55,7 @@ public class IstioEnricher extends BaseEnricher {
             return d;
         }
 
-        Config(String d) {
-            this.d = d;
-        }
-
-        private final String d;
+        protected String d;
     }
 
     public IstioEnricher(EnricherContext buildContext) {
