@@ -16,7 +16,7 @@ public enum ProxyArgs {
                             "--statsdUdpAddress,istio-mixer.ISTIO_NAMESPACE:9125," +
                             "--proxyAdminPort,15000"),
 
-    RELEASE_0_3_0("0.3.12","proxy,sidecar" +
+    RELEASE_0_3_0("0.3.0","proxy,sidecar" +
                            "-v,2," +
                            "--configPath,/etc/istio/proxy," +
                            "--binaryPath,/usr/local/bin/envoy," +
