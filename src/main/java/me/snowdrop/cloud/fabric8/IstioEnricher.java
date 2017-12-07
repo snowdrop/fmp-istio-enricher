@@ -32,60 +32,34 @@ public class IstioEnricher extends BaseEnricher {
 
     // Available configuration keys
     private enum Config implements Configs.Key {
-        name,
-        enabled {{
-            d = "yes";
-        }},
-        istioVersion {{
-            d = "0.2.12";
-        }},
-        alpineVersion {{
-            d = "3.5";
-        }},
-        proxyName {{
-            d = "istio-proxy";
-        }},
-        proxyDockerImageName {{
-            d = "docker.io/istio/proxy_debug";
-        }},
-        proxyImageStreamName {{
-            d = "proxy_debug";
-        }},
-        proxyArgs {{
-            d = "proxy,sidecar,-v,2,--configPath,/etc/istio/proxy,--binaryPath,/usr/local/bin/envoy,--serviceCluster,app-cluster-name," +
+        name("name"),
+        enabled("yes"),
+        istioVersion("0.2.12"),
+        alpineVersion("3.5"),
+        proxyName("istio-proxy"),
+        proxyDockerImageName("docker.io/istio/proxy_debug"),
+        proxyImageStreamName("proxy_debug"),
+        proxyArgs("proxy,sidecar,-v,2,--configPath,/etc/istio/proxy,--binaryPath,/usr/local/bin/envoy,--serviceCluster,app-cluster-name," +
                 "--drainDuration,45s,--parentShutdownDuration,1m0s,--discoveryAddress,istio-pilot.istio-system:8080,--discoveryRefreshDelay," +
-                "1s,--zipkinAddress,zipkin.istio-system:9411,--connectTimeout,10s,--statsdUdpAddress,istio-mixer.istio-system:9125,--proxyAdminPort,15000";
-        }},
-        initName {{
-            d = "istio-init";
-        }},
-        initDockerImageName {{
-            d = "docker.io/istio/proxy_init";
-        }},
-        initImageStreamName {{
-            d = "proxy_init";
-        }},
-        coreDumpName {{
-            d = "enable-core-dump";
-        }},
-        coreDumpDockerImageName {{
-            d = "alpine";
-        }},
-        coreDumpImageStreamName {{
-            d = "alpine";
-        }},
-        imagePullPolicy {{
-            d = "IfNotPresent";
-        }},
-        replicaCount {{
-            d = "1";
-        }};
+                "1s,--zipkinAddress,zipkin.istio-system:9411,--connectTimeout,10s,--statsdUdpAddress,istio-mixer.istio-system:9125,--proxyAdminPort,15000"),
+        initName("istio-init"),
+        initDockerImageName("docker.io/istio/proxy_init"),
+        initImageStreamName("proxy_init"),
+        coreDumpName("enable-core-dump"),
+        coreDumpDockerImageName("alpine"),
+        coreDumpImageStreamName("alpine"),
+        imagePullPolicy("IfNotPresent"),
+        replicaCount("1");
 
         public String def() {
             return d;
         }
 
-        protected String d;
+        Config(String d) {
+            this.d = d;
+        }
+
+        private final String d;
     }
 
     public IstioEnricher(EnricherContext buildContext) {
