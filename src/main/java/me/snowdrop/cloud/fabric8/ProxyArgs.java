@@ -43,10 +43,10 @@ public enum ProxyArgs {
         return args;
     }
 
-    public static ProxyArgs findByRelease(String release){
+    public static String findByRelease(String release){
         for(ProxyArgs v : values()){
             if( v.version.equals(release)){
-                return v;
+                return v.args;
             }
         }
         return null;
