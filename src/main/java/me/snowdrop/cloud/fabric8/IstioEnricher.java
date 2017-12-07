@@ -28,6 +28,7 @@ public class IstioEnricher extends BaseEnricher {
 
     private static final String ISTIO_ANNOTATION_STATUS = "injected-version-releng@0d29a2c0d15f-0.2.12-998e0e00d375688bcb2af042fc81a60ce5264009";
     private final DeploymentHandler deployHandler;
+    private final String clusterName;
 
     // Available configuration keys
     private enum Config implements Configs.Key {
@@ -238,14 +239,14 @@ public class IstioEnricher extends BaseEnricher {
     @Override
     public void addMissingResources(KubernetesListBuilder builder) {
 
-        final String name = getConfig(Config.name, MavenUtil.createDefaultResourceName(getProject()));
+        clusterName = getConfig(Config.name, MavenUtil.createDefaultResourceName(getProject()));
 
         String[] proxyArgs = getConfig(Config.proxyArgs).split(",");
         List<String> sidecarArgs = new ArrayList<>();
         for (int i = 0; i < proxyArgs.length; i++) {
             //cluster name defaults to app name a.k.a controller name
             if("app-cluster-name".equalsIgnoreCase(proxyArgs[i])){
-                sidecarArgs.add(name);
+                sidecarArgs.add(clusterName);
             }else {
                 sidecarArgs.add(proxyArgs[i]);
             }
@@ -334,7 +335,7 @@ public class IstioEnricher extends BaseEnricher {
                           .withAutomatic(true)
                           .withNewFrom()
                             .withKind("ImageStreamTag")
-                            .withName("say-service:latest")
+                            .withName(clusterName + ":latest")
                           .endFrom()
                           .withContainerNames("spring-boot")
                          .endImageChangeParams()
