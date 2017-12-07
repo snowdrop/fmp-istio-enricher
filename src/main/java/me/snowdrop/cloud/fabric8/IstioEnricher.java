@@ -220,12 +220,7 @@ public class IstioEnricher extends BaseEnricher {
             //cluster name defaults to app name a.k.a controller name
             if ("APP_CLUSTER_NAME".equalsIgnoreCase(proxyArgs[i])) {
                 sidecarArgs.add(clusterName);
-            } else {
-                sidecarArgs.add(proxyArgs[i]);
-            }
-
-            // Use istio namespace
-            if ("ISTIO_NAMESPACE".equalsIgnoreCase(proxyArgs[i])) {
+            } else if ("ISTIO_NAMESPACE".equalsIgnoreCase(proxyArgs[i])) {
                 sidecarArgs.add(getConfig(Config.istioNamespace));
             } else {
                 sidecarArgs.add(proxyArgs[i]);
