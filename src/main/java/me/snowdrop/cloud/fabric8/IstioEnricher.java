@@ -236,19 +236,19 @@ public class IstioEnricher extends BaseEnricher {
                     podSpecBuilder
                             // Add Istio Proxy, Volumes and Secret
                             .addNewContainer()
-                            .withName(getConfig(Config.proxyName))
-                            .withResources(new ResourceRequirements())
-                            .withTerminationMessagePath("/dev/termination-log")
-                            .withImage(getConfig(Config.proxyImageStreamName))
-                            .withImagePullPolicy(getConfig(Config.imagePullPolicy))
-                            .withArgs(sidecarArgs)
-                            .withEnv(proxyEnvVars())
-                            .withSecurityContext(new SecurityContextBuilder()
+                              .withName(getConfig(Config.proxyName))
+                              .withResources(new ResourceRequirements())
+                              .withTerminationMessagePath("/dev/termination-log")
+                              .withImage(getConfig(Config.proxyImageStreamName))
+                              .withImagePullPolicy(getConfig(Config.imagePullPolicy))
+                              .withArgs(sidecarArgs)
+                              .withEnv(proxyEnvVars())
+                              .withSecurityContext(new SecurityContextBuilder()
                                     .withRunAsUser(1337l)
                                     .withPrivileged(true)
                                     .withReadOnlyRootFilesystem(false)
                                     .build())
-                            .withVolumeMounts(istioVolumeMounts())
+                              .withVolumeMounts(istioVolumeMounts())
                             .endContainer()
                             .withVolumes(istioVolumes())
                             // Add Istio Init container and Core Dump
@@ -262,59 +262,59 @@ public class IstioEnricher extends BaseEnricher {
             public void visit(DeploymentConfigBuilder deploymentConfigBuilder) {
                 deploymentConfigBuilder
                         .editOrNewSpec()
-                        // Add Istio Side car annotation
-                        .editOrNewTemplate()
-                        .editOrNewMetadata()
-                        .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS.replace("VERSION", getConfig(Config.istioVersion)))
-                        .endMetadata()
-                        .endTemplate()
-                        // Specify the replica count
-                        .withReplicas(Integer.parseInt(getConfig(Config.replicaCount)))
-                        //.withTriggers()
-                        .addNewTrigger()
-                        .withType("ImageChange")
-                        .withNewImageChangeParams()
-                        .withAutomatic(true)
-                        .withNewFrom()
-                        .withKind("ImageStreamTag")
-                        .withName(getConfig(Config.initImageStreamName) + ":" + getConfig(Config.istioVersion))
-                        .endFrom()
-                        .withContainerNames(getConfig(Config.initName))
-                        .endImageChangeParams()
-                        .endTrigger()
-                        .addNewTrigger()
-                        .withType("ImageChange")
-                        .withNewImageChangeParams()
-                        .withAutomatic(true)
-                        .withNewFrom()
-                        .withKind("ImageStreamTag")
-                        .withName(getConfig(Config.coreDumpImageStreamName) + ":" + getConfig(Config.alpineVersion))
-                        .endFrom()
-                        .withContainerNames("enable-core-dump")
-                        .endImageChangeParams()
-                        .endTrigger()
-                        .addNewTrigger()
-                        .withType("ImageChange")
-                        .withNewImageChangeParams()
-                        .withAutomatic(true)
-                        .withNewFrom()
-                        .withKind("ImageStreamTag")
-                        .withName(getConfig(Config.proxyImageStreamName) + ":" + getConfig(Config.istioVersion))
-                        .endFrom()
-                        .withContainerNames(getConfig(Config.proxyName))
-                        .endImageChangeParams()
-                        .endTrigger()
-                        .addNewTrigger()
-                        .withType("ImageChange")
-                        .withNewImageChangeParams()
-                        .withAutomatic(true)
-                        .withNewFrom()
-                        .withKind("ImageStreamTag")
-                        .withName(clusterName + ":latest")
-                        .endFrom()
-                        .withContainerNames("spring-boot")
-                        .endImageChangeParams()
-                        .endTrigger()
+                          // Add Istio Side car annotation
+                          .editOrNewTemplate()
+                            .editOrNewMetadata()
+                              .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS.replace("VERSION", getConfig(Config.istioVersion)))
+                            .endMetadata()
+                          .endTemplate()
+                          // Specify the replica count
+                          .withReplicas(Integer.parseInt(getConfig(Config.replicaCount)))
+                          //.withTriggers()
+                          .addNewTrigger()
+                            .withType("ImageChange")
+                            .withNewImageChangeParams()
+                              .withAutomatic(true)
+                              .withNewFrom()
+                                .withKind("ImageStreamTag")
+                                .withName(getConfig(Config.initImageStreamName) + ":" + getConfig(Config.istioVersion))
+                              .endFrom()
+                              .withContainerNames(getConfig(Config.initName))
+                           .endImageChangeParams()
+                          .endTrigger()
+                          .addNewTrigger()
+                            .withType("ImageChange")
+                            .withNewImageChangeParams()
+                              .withAutomatic(true)
+                              .withNewFrom()
+                                .withKind("ImageStreamTag")
+                                .withName(getConfig(Config.coreDumpImageStreamName) + ":" + getConfig(Config.alpineVersion))
+                              .endFrom()
+                              .withContainerNames("enable-core-dump")
+                            .endImageChangeParams()
+                          .endTrigger()
+                          .addNewTrigger()
+                            .withType("ImageChange")
+                            .withNewImageChangeParams()
+                              .withAutomatic(true)
+                              .withNewFrom()
+                                .withKind("ImageStreamTag")
+                                .withName(getConfig(Config.proxyImageStreamName) + ":" + getConfig(Config.istioVersion))
+                              .endFrom()
+                              .withContainerNames(getConfig(Config.proxyName))
+                            .endImageChangeParams()
+                          .endTrigger()
+                          .addNewTrigger()
+                            .withType("ImageChange")
+                            .withNewImageChangeParams()
+                              .withAutomatic(true)
+                              .withNewFrom()
+                                .withKind("ImageStreamTag")
+                                .withName(clusterName + ":latest")
+                              .endFrom()
+                              .withContainerNames("spring-boot")
+                            .endImageChangeParams()
+                          .endTrigger()
                         .endSpec();
             }
         });
@@ -345,17 +345,17 @@ public class IstioEnricher extends BaseEnricher {
         ImageStreamBuilder imageStreamBuilder = new ImageStreamBuilder();
         imageStreamBuilder
                 .withNewMetadata()
-                .withName(getConfig(Config.initImageStreamName))
+                  .withName(getConfig(Config.initImageStreamName))
                 .endMetadata()
 
                 .withNewSpec()
-                .addNewTag()
-                .withNewFrom()
-                .withKind("DockerImage")
-                .withName(getConfig(Config.initDockerImageName) + ":" + getConfig(Config.istioVersion))
-                .endFrom()
-                .withName(getConfig(Config.istioVersion))
-                .endTag()
+                  .addNewTag()
+                  .withNewFrom()
+                    .withKind("DockerImage")
+                    .withName(getConfig(Config.initDockerImageName) + ":" + getConfig(Config.istioVersion))
+                  .endFrom()
+                  .withName(getConfig(Config.istioVersion))
+                  .endTag()
                 .endSpec()
                 .build();
         imageStreams.add(imageStreamBuilder.build());
@@ -363,17 +363,17 @@ public class IstioEnricher extends BaseEnricher {
         imageStreamBuilder = new ImageStreamBuilder();
         imageStreamBuilder
                 .withNewMetadata()
-                .withName(getConfig(Config.coreDumpImageStreamName))
+                  .withName(getConfig(Config.coreDumpImageStreamName))
                 .endMetadata()
 
                 .withNewSpec()
-                .addNewTag()
-                .withNewFrom()
-                .withKind("DockerImage")
-                .withName(getConfig(Config.coreDumpDockerImageName) + ":" + getConfig(Config.alpineVersion))
-                .endFrom()
-                .withName(getConfig(Config.alpineVersion))
-                .endTag()
+                  .addNewTag()
+                  .withNewFrom()
+                    .withKind("DockerImage")
+                    .withName(getConfig(Config.coreDumpDockerImageName) + ":" + getConfig(Config.alpineVersion))
+                  .endFrom()
+                  .withName(getConfig(Config.alpineVersion))
+                  .endTag()
                 .endSpec()
                 .build();
         imageStreams.add(imageStreamBuilder.build());
@@ -381,17 +381,17 @@ public class IstioEnricher extends BaseEnricher {
         imageStreamBuilder = new ImageStreamBuilder();
         imageStreamBuilder
                 .withNewMetadata()
-                .withName(getConfig(Config.proxyImageStreamName))
+                  .withName(getConfig(Config.proxyImageStreamName))
                 .endMetadata()
 
                 .withNewSpec()
-                .addNewTag()
-                .withNewFrom()
-                .withKind("DockerImage")
-                .withName(getConfig(Config.proxyDockerImageName) + ":" + getConfig(Config.istioVersion))
-                .endFrom()
-                .withName(getConfig(Config.istioVersion))
-                .endTag()
+                  .addNewTag()
+                  .withNewFrom()
+                    .withKind("DockerImage")
+                    .withName(getConfig(Config.proxyDockerImageName) + ":" + getConfig(Config.istioVersion))
+                  .endFrom()
+                  .withName(getConfig(Config.istioVersion))
+                  .endTag()
                 .endSpec()
                 .build();
         imageStreams.add(imageStreamBuilder.build());
@@ -547,35 +547,6 @@ public class IstioEnricher extends BaseEnricher {
         envVars.add(new EnvVar("INSTANCE_IP", null, podIpVarSource));
 
         return envVars;
-    }
-
-    private List<ImageConfiguration> istioImages() {
-        List<ImageConfiguration> images = new ArrayList<>();
-        ImageConfiguration.Builder builder = new ImageConfiguration.Builder();
-        builder
-                .name(getConfig(Config.proxyImageStreamName))
-                .buildConfig(new BuildImageConfiguration.Builder()
-                        .from(getConfig(Config.proxyDockerImageName))
-                        .build());
-        images.add(builder.build());
-
-        builder = new ImageConfiguration.Builder();
-        builder
-                .name(getConfig(Config.initImageStreamName))
-                .buildConfig(new BuildImageConfiguration.Builder()
-                        .from(getConfig(Config.initDockerImageName))
-                        .build());
-        images.add(builder.build());
-
-        builder = new ImageConfiguration.Builder();
-        builder
-                .name(getConfig(Config.coreDumpImageStreamName))
-                .buildConfig(new BuildImageConfiguration.Builder()
-                        .from(getConfig(Config.coreDumpDockerImageName))
-                        .build());
-        images.add(builder.build());
-
-        return images;
     }
 
 }
