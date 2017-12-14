@@ -218,28 +218,20 @@ public class IstioEnricher extends BaseEnricher {
 
     @Override
     public void addMissingResources(KubernetesListBuilder builder) {
+        // first check that we actually know the requested Istio version
+        final String istioVersion = getConfig(Config.istioVersion);
+        final String proxyArgsTemplate = ProxyArgs.findByRelease(istioVersion);
+        if(proxyArgsTemplate == null) {
+            throw new IllegalArgumentException("Unknown Istio release: " + istioVersion);
+        }
 
         clusterName = getConfig(Config.name, MavenUtil.createDefaultResourceName(getProject()));
 
         DefaultConfig config = fetchConfigMap(kubeClient, getConfig(Config.istioNamespace));
 
-        String[] proxyArgs = ProxyArgs.findByRelease(getConfig(Config.istioVersion)).split(",");
-        List<String> sidecarArgs = new ArrayList<>();
-        for (int i = 0; i < proxyArgs.length; i++) {
-            //cluster name defaults to app name a.k.a controller name
-            if ("APP_CLUSTER_NAME".equalsIgnoreCase(proxyArgs[i])) {
-                sidecarArgs.add(clusterName);
-            } else if (proxyArgs[i].contains("ISTIO_PILOT_ADDRESS")) {
-                sidecarArgs.add(proxyArgs[i].replace("ISTIO_PILOT_ADDRESS",config.getDiscoveryAddress()));
-            } else if (proxyArgs[i].contains("ZIPKIN_ADDRESS")) {
-                sidecarArgs.add(proxyArgs[i].replace("ZIPKIN_ADDRESS",config.getZipkinAddress()));
-            } else if (proxyArgs[i].contains("MIXER_ADDRESS")) {
-                sidecarArgs.add(proxyArgs[i].replace("MIXER_ADDRESS",config.getStatsdUdpAddress()));
-            } else {
-                sidecarArgs.add(proxyArgs[i]);
-            }
-        }
-
+        // replace placeholders in proxy args template
+        final String proxyArgs = String.format(proxyArgsTemplate, clusterName, config.getDiscoveryAddress(), config.getZipkinAddress(), config.getStatsdUdpAddress());
+        List<String> sidecarArgs = Arrays.asList(proxyArgs.split(","));
 
         builder.accept(new TypedVisitor<PodSpecBuilder>() {
             public void visit(PodSpecBuilder podSpecBuilder) {
