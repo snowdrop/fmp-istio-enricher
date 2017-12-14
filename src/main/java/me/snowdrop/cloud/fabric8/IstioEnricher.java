@@ -1,6 +1,5 @@
 package me.snowdrop.cloud.fabric8;
 
-import com.sun.deploy.uitoolkit.impl.fx.ui.resources.Deployment;
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -267,21 +266,21 @@ public class IstioEnricher extends BaseEnricher {
                      // Add Istio Side car annotation
                      .editOrNewTemplate()
                        .editOrNewMetadata()
-                         .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS.replace("VERSION", getConfig(Config.istioVersion)))
+                         .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS.replace("VERSION", istioVersion))
                        .endMetadata()
                      .endTemplate()
                      // Specify the replica count
                      .withReplicas(Integer.parseInt(getConfig(Config.replicaCount)))
-                     .withTriggers(populateTriggers())
+                     .withTriggers(populateTriggers(istioVersion))
                    .endSpec();
             }
         });
         // TODO - Check if it already exists before to add it to the Kubernetes List
         // Add ImageStreams about Istio Proxy, Istio Init and Core Dump
-        builder.addAllToImageStreamItems(istioImageStream()).build();
+        builder.addAllToImageStreamItems(istioImageStream(istioVersion)).build();
     }
 
-    protected List<DeploymentTriggerPolicy> populateTriggers() {
+    private List<DeploymentTriggerPolicy> populateTriggers(String istioVersion) {
         List<DeploymentTriggerPolicy> triggers =  new ArrayList<>();
         DeploymentTriggerPolicyBuilder trigger = new DeploymentTriggerPolicyBuilder();
 
@@ -291,7 +290,7 @@ public class IstioEnricher extends BaseEnricher {
                  .withAutomatic(true)
                  .withNewFrom()
                    .withKind("ImageStreamTag")
-                   .withName(getConfig(Config.initImageStreamName) + ":" + getConfig(Config.istioVersion))
+                   .withName(getConfig(Config.initImageStreamName) + ":" + istioVersion)
                  .endFrom()
                  .withContainerNames(getConfig(Config.initName))
                .endImageChangeParams()
@@ -305,7 +304,7 @@ public class IstioEnricher extends BaseEnricher {
                  .withAutomatic(true)
                  .withNewFrom()
                    .withKind("ImageStreamTag")
-                   .withName(getConfig(Config.proxyImageStreamName) + ":" + getConfig(Config.istioVersion))
+                   .withName(getConfig(Config.proxyImageStreamName) + ":" + istioVersion)
                  .endFrom()
                  .withContainerNames(getConfig(Config.proxyName))
                .endImageChangeParams()
@@ -401,7 +400,7 @@ public class IstioEnricher extends BaseEnricher {
            referencePolicy:
              type: Source
      */
-    protected List<ImageStream> istioImageStream() {
+    private List<ImageStream> istioImageStream(String istioVersion) {
         List<ImageStream> imageStreams = new ArrayList<>();
         ImageStreamBuilder imageStreamBuilder = new ImageStreamBuilder();
         imageStreamBuilder
@@ -413,9 +412,9 @@ public class IstioEnricher extends BaseEnricher {
                   .addNewTag()
                   .withNewFrom()
                     .withKind("DockerImage")
-                    .withName(getConfig(Config.initDockerImageName) + ":" + getConfig(Config.istioVersion))
+                    .withName(getConfig(Config.initDockerImageName) + ":" + istioVersion)
                   .endFrom()
-                  .withName(getConfig(Config.istioVersion))
+                  .withName(istioVersion)
                   .endTag()
                 .endSpec()
                 .build();
@@ -449,9 +448,9 @@ public class IstioEnricher extends BaseEnricher {
                   .addNewTag()
                   .withNewFrom()
                     .withKind("DockerImage")
-                    .withName(getConfig(Config.proxyDockerImageName) + ":" + getConfig(Config.istioVersion))
+                    .withName(getConfig(Config.proxyDockerImageName) + ":" + istioVersion)
                   .endFrom()
-                  .withName(getConfig(Config.istioVersion))
+                  .withName(istioVersion)
                   .endTag()
                 .endSpec()
                 .build();
