@@ -30,7 +30,7 @@ public enum ProxyArgs {
                   "--connectTimeout,10s," +
                   "--statsdUdpAddress,%s," +
                   "--proxyAdminPort,15000," +
-                  "controlPlaneAuthPolicy,NONE");
+                  "--controlPlaneAuthPolicy,NONE");
 
     private final String version;
     private final String args;
