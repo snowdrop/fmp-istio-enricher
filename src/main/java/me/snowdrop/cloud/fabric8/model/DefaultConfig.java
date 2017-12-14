@@ -1,12 +1,16 @@
 package me.snowdrop.cloud.fabric8.model;
 
+/*
+ *  NOTE: If you change any values in this section, make sure to make
+ *  the same changes in start up args (See ProxyArgs enum)
+ */
 public class DefaultConfig {
 
     /*
-     This setting determines how frequently should Envoy fetch and update its internal configuration
-     from Istio Pilot. Lower refresh delay results in higher CPU utilization and potential performance
-     loss in exchange for faster convergence. Tweak this value according to your setup.
-    */
+     * This setting determines how frequently should Envoy fetch and update its internal configuration
+     * from Istio Pilot. Lower refresh delay results in higher CPU utilization and potential performance
+     * loss in exchange for faster convergence. Tweak this value according to your setup.
+     */
     public String discoveryRefreshDelay = "1s";
 
     // TCP connection timeout between Envoy & the application, and between Envoys.
@@ -25,12 +29,12 @@ public class DefaultConfig {
     public String parentShutdownDuration = "1m0s";
 
     /*
-      Port where Envoy listens (on local host) for admin commands
-      You can exec into the istio-proxy container in a pod and
-      curl the admin port (curl http://localhost:15000/) to obtain
-      diagnostic information from Envoy. See
-      https://lyft.github.io/envoy/docs/operations/admin.html
-      for more details
+     *  Port where Envoy listens (on local host) for admin commands
+     *  You can exec into the istio-proxy container in a pod and
+     *  curl the admin port (curl http://localhost:15000/) to obtain
+     *  diagnostic information from Envoy. See
+     *  https://lyft.github.io/envoy/docs/operations/admin.html
+     *  for more details
      */
     public int proxyAdminPort = 15000;
 
