@@ -11,22 +11,22 @@ public class DefaultConfig {
      * from Istio Pilot. Lower refresh delay results in higher CPU utilization and potential performance
      * loss in exchange for faster convergence. Tweak this value according to your setup.
      */
-    public String discoveryRefreshDelay = "1s";
+    private String discoveryRefreshDelay = "1s";
 
     // TCP connection timeout between Envoy & the application, and between Envoys.
-    public String connectTimeout = "10s";
+    private String connectTimeout = "10s";
 
     // Where should envoy's configuration be stored in the istio-proxy container
-    public String configPath = "/etc/istio/proxy";
-    public String binaryPath = "/usr/local/bin/envoy";
+    private String configPath = "/etc/istio/proxy";
+    private String binaryPath = "/usr/local/bin/envoy";
 
     // The pseudo service name used for Envoy.
-    public String serviceCluster = "istio-proxy";
+    private String serviceCluster = "istio-proxy";
 
     // These settings that determine how long an old Envoy
     // process should be kept alive after an occasional reload.
-    public String drainDuration = "45s";
-    public String parentShutdownDuration = "1m0s";
+    private String drainDuration = "45s";
+    private String parentShutdownDuration = "1m0s";
 
     /*
      *  Port where Envoy listens (on local host) for admin commands
@@ -36,21 +36,21 @@ public class DefaultConfig {
      *  https://lyft.github.io/envoy/docs/operations/admin.html
      *  for more details
      */
-    public int proxyAdminPort = 15000;
+    private int proxyAdminPort = 15000;
 
     // Address where Istio Pilot service is running
-    public String discoveryAddress = "istio-pilot.istio-system:15003";
+    private String discoveryAddress = "istio-pilot.istio-system:15003";
 
     // Zipkin trace collector
-    public String zipkinAddress = "zipkin.istio-system:9411";
+    private String zipkinAddress = "zipkin.istio-system:9411";
 
     // Statsd metrics collector. Istio mixer exposes a UDP endpoint
     // to collect and convert statsd metrics into Prometheus metrics.
-    public String statsdUdpAddress = "istio-mixer.istio-system:9125";
+    private String statsdUdpAddress = "istio-mixer.istio-system:9125";
 
     // Enable mutual TLS authentication between
     // sidecars and istio control plane.
-    public String controlPlaneAuthPolicy = "MUTUAL_TLS";
+    private String controlPlaneAuthPolicy = "MUTUAL_TLS";
 
     public DefaultConfig() {}
 
