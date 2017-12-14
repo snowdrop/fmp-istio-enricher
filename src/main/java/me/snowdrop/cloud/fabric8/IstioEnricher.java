@@ -1,5 +1,6 @@
 package me.snowdrop.cloud.fabric8;
 
+import com.sun.deploy.uitoolkit.impl.fx.ui.resources.Deployment;
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -38,7 +39,7 @@ public class IstioEnricher extends BaseEnricher {
     // Available configuration keys
     private enum Config implements Configs.Key {
         name("name"),
-        enabled("yes"),
+        enableCoreDump("yes"),
         istioVersion("0.2.12"),
         istioNamespace("istio-system"),
         istioConfigMapName("istio"),
@@ -242,8 +243,6 @@ public class IstioEnricher extends BaseEnricher {
 
         builder.accept(new TypedVisitor<PodSpecBuilder>() {
             public void visit(PodSpecBuilder podSpecBuilder) {
-                if ("yes".equalsIgnoreCase(getConfig(Config.enabled))) {
-                    log.info("Adding Istio proxy, init and core-dump");
 
                     podSpecBuilder
                             // Add Istio Proxy, Volumes and Secret
@@ -264,75 +263,91 @@ public class IstioEnricher extends BaseEnricher {
                             .endContainer()
                             .withVolumes(istioVolumes())
                             // Add Istio Init container and Core Dump
-                            .withInitContainers(istioInitContainer(), coreDumpInitContainer());
+                            .withInitContainers(populateInitContainers());
                 }
-            }
         });
 
         // Add Missing triggers
         builder.accept(new TypedVisitor<DeploymentConfigBuilder>() {
             public void visit(DeploymentConfigBuilder deploymentConfigBuilder) {
                 deploymentConfigBuilder
-                        .editOrNewSpec()
-                          // Add Istio Side car annotation
-                          .editOrNewTemplate()
-                            .editOrNewMetadata()
-                              .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS.replace("VERSION", getConfig(Config.istioVersion)))
-                            .endMetadata()
-                          .endTemplate()
-                          // Specify the replica count
-                          .withReplicas(Integer.parseInt(getConfig(Config.replicaCount)))
-                          //.withTriggers()
-                          .addNewTrigger()
-                            .withType("ImageChange")
-                            .withNewImageChangeParams()
-                              .withAutomatic(true)
-                              .withNewFrom()
-                                .withKind("ImageStreamTag")
-                                .withName(getConfig(Config.initImageStreamName) + ":" + getConfig(Config.istioVersion))
-                              .endFrom()
-                              .withContainerNames(getConfig(Config.initName))
-                           .endImageChangeParams()
-                          .endTrigger()
-                          .addNewTrigger()
-                            .withType("ImageChange")
-                            .withNewImageChangeParams()
-                              .withAutomatic(true)
-                              .withNewFrom()
-                                .withKind("ImageStreamTag")
-                                .withName(getConfig(Config.coreDumpImageStreamName) + ":" + getConfig(Config.alpineVersion))
-                              .endFrom()
-                              .withContainerNames("enable-core-dump")
-                            .endImageChangeParams()
-                          .endTrigger()
-                          .addNewTrigger()
-                            .withType("ImageChange")
-                            .withNewImageChangeParams()
-                              .withAutomatic(true)
-                              .withNewFrom()
-                                .withKind("ImageStreamTag")
-                                .withName(getConfig(Config.proxyImageStreamName) + ":" + getConfig(Config.istioVersion))
-                              .endFrom()
-                              .withContainerNames(getConfig(Config.proxyName))
-                            .endImageChangeParams()
-                          .endTrigger()
-                          .addNewTrigger()
-                            .withType("ImageChange")
-                            .withNewImageChangeParams()
-                              .withAutomatic(true)
-                              .withNewFrom()
-                                .withKind("ImageStreamTag")
-                                .withName(clusterName + ":latest")
-                              .endFrom()
-                              .withContainerNames("spring-boot")
-                            .endImageChangeParams()
-                          .endTrigger()
-                        .endSpec();
+                   .editOrNewSpec()
+                     // Add Istio Side car annotation
+                     .editOrNewTemplate()
+                       .editOrNewMetadata()
+                         .addToAnnotations("sidecar.istio.io/status", ISTIO_ANNOTATION_STATUS.replace("VERSION", getConfig(Config.istioVersion)))
+                       .endMetadata()
+                     .endTemplate()
+                     // Specify the replica count
+                     .withReplicas(Integer.parseInt(getConfig(Config.replicaCount)))
+                     .withTriggers(populateTriggers())
+                   .endSpec();
             }
         });
         // TODO - Check if it already exists before to add it to the Kubernetes List
         // Add ImageStreams about Istio Proxy, Istio Init and Core Dump
         builder.addAllToImageStreamItems(istioImageStream()).build();
+    }
+
+    protected List<DeploymentTriggerPolicy> populateTriggers() {
+        List<DeploymentTriggerPolicy> triggers =  new ArrayList<>();
+        DeploymentTriggerPolicyBuilder trigger = new DeploymentTriggerPolicyBuilder();
+
+        // Add Istio Init Image
+        trigger.withType("ImageChange")
+               .withNewImageChangeParams()
+                 .withAutomatic(true)
+                 .withNewFrom()
+                   .withKind("ImageStreamTag")
+                   .withName(getConfig(Config.initImageStreamName) + ":" + getConfig(Config.istioVersion))
+                 .endFrom()
+                 .withContainerNames(getConfig(Config.initName))
+               .endImageChangeParams()
+               .build();
+        triggers.add(trigger.build());
+
+
+        // Add Istio Proxy Image
+        trigger.withType("ImageChange")
+               .withNewImageChangeParams()
+                 .withAutomatic(true)
+                 .withNewFrom()
+                   .withKind("ImageStreamTag")
+                   .withName(getConfig(Config.proxyImageStreamName) + ":" + getConfig(Config.istioVersion))
+                 .endFrom()
+                 .withContainerNames(getConfig(Config.proxyName))
+               .endImageChangeParams()
+               .build();
+        triggers.add(trigger.build());
+
+        // Add Core Dump image if enableCoreDump
+        if ("yes".equalsIgnoreCase(getConfig(Config.enableCoreDump))) {
+            trigger.withType("ImageChange")
+                   .withNewImageChangeParams()
+                     .withAutomatic(true)
+                     .withNewFrom()
+                       .withKind("ImageStreamTag")
+                       .withName(clusterName + ":latest")
+                      .endFrom()
+                      .withContainerNames("spring-boot")
+                   .endImageChangeParams()
+                   .build();
+            triggers.add(trigger.build());
+        }
+
+        return triggers;
+    }
+
+    protected List<Container> populateInitContainers() {
+        List<Container> initcontainerList = new ArrayList<>();
+
+        // Add Istio container which setup IPTABLES
+        initcontainerList.add(istioInitContainer());
+
+        if ("yes".equalsIgnoreCase(getConfig(Config.enableCoreDump))) {
+            initcontainerList.add(coreDumpInitContainer());
+        }
+        return initcontainerList;
     }
 
     protected DefaultConfig fetchConfigMap(KubernetesClient kubeClient, String namespace) {
