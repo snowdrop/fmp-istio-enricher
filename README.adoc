@@ -1,7 +1,22 @@
-= fabric8 Maven Plugin Istio Enricher
+= Fabric8 Maven Plugin Istio Enricher
 
-This fabric8 maven plugin enricher API allows enriching the kubernetes deployments with Istio Proxy and
-other needed annotations
+This Fabric8 maven plugin enricher API allows enriching the Openshift DeploymentConfig resource with Istio Proxy, Istio Init or Core Dump image and
+other needed triggers.
+
+Some parameters can be changed within the plugin's profile yaml or wihin the plugin xml part of the plugin.
+To, by example change the istio version to be used for the docker image to be used, then add this parameter within yiour profile
+
+[source,yaml]
+----
+- name: istio-spring-boot-profile
+  enricher:
+    config:
+      fmp-istio-enricher:
+        istioVersion: "0.2.12"
+----
+
+The list of the by default parameters, as defined by the Istio project, is defined within the Istio `MeshConfig` and `DefaultConfig` java class.
+They will be overridden when the enricher will call the Kubernetes Api to get the Istio ConfigMap.
 
 WARNING: This enricher is still under development, and expect changes
 
