@@ -60,6 +60,12 @@
             <artifactId>kubernetes-model</artifactId>
             <version>2.0.4</version>
         </dependency>
+
+        <dependency>
+            <groupId>me.snowdrop</groupId>
+            <artifactId>istio-model</artifactId>
+            <version>0.1-SNAPSHOT</version>
+        </dependency>
     </dependencies>
 
     <profiles>

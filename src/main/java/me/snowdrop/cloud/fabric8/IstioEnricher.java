@@ -1,5 +1,6 @@
 package me.snowdrop.cloud.fabric8;
 
+import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -11,8 +12,8 @@ import io.fabric8.maven.core.util.MavenUtil;
 import io.fabric8.maven.enricher.api.BaseEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
 import io.fabric8.openshift.api.model.*;
-import me.snowdrop.cloud.fabric8.model.DefaultConfig;
-import me.snowdrop.cloud.fabric8.model.MeshConfig;
+import me.snowdrop.istio.api.model.v1.mesh.MeshConfig;
+import me.snowdrop.istio.api.model.v1.mesh.ProxyConfig;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -226,7 +227,8 @@ public class IstioEnricher extends BaseEnricher {
 
         clusterName = getConfig(Config.name, MavenUtil.createDefaultResourceName(getProject()));
 
-        DefaultConfig config = fetchConfigMap(kubeClient, getConfig(Config.istioNamespace));
+        final MeshConfig meshConfig = fetchConfigMap(kubeClient, getConfig(Config.istioNamespace));
+        final ProxyConfig config = meshConfig.getDefaultConfig();
 
         // replace placeholders in proxy args template
         final String proxyArgs = String.format(proxyArgsTemplate, clusterName, config.getDiscoveryAddress(), config.getZipkinAddress(), config.getStatsdUdpAddress());
@@ -341,30 +343,25 @@ public class IstioEnricher extends BaseEnricher {
         return initcontainerList;
     }
 
-    protected DefaultConfig fetchConfigMap(KubernetesClient kubeClient, String namespace) {
+    private MeshConfig fetchConfigMap(KubernetesClient kubeClient, String namespace) {
 
-        ConfigMap map = kubeClient.configMaps().withName(getConfig(Config.istioConfigMapName)).get();
-        Map<String, String> result = new HashMap<>();
-        MeshConfig meshConfig = new MeshConfig();;
+        final String configMapName = getConfig(Config.istioConfigMapName);
+        ConfigMap map = kubeClient.configMaps().withName(configMapName).get();
 
+        final YAMLMapper mapper = new YAMLMapper();
+        final String meshConfigAsString = map.getData().get("mesh");
+        if(meshConfigAsString != null) {
+            try {
+                final MeshConfig meshConfig = mapper.readValue(meshConfigAsString, MeshConfig.class);
 
-        if (map != null) {
-            for (Map.Entry<String, String> entry : map.getData().entrySet()) {
-                String key = entry.getKey();
-                String value = entry.getValue();
-                if (key.equals("mesh")) {
-                    result.putAll(KEY_VALUE_TO_PROPERTIES.andThen(PROPERTIES_TO_MAP).apply(value));
-
-                    DefaultConfig defaultConfig = new DefaultConfig();
-                    meshConfig.enableTracing = Boolean.parseBoolean(result.get("enableTracing"));
-                    defaultConfig.setDiscoveryAddress(result.get("discoveryAddress"));
-                    defaultConfig.setZipkinAddress(result.get("zipkinAddress"));
-                    defaultConfig.setStatsdUdpAddress(result.get("statsdUdpAddress"));
-                    meshConfig.setDefaultConfig(defaultConfig);
-                }
+                return meshConfig;
+            } catch (IOException e) {
+                throw new IllegalArgumentException("Couldn't parse Istio Mesh configuration", e);
             }
+        } else {
+            throw new IllegalArgumentException("Couldn't find an Istio Mesh configuration in "
+                    + configMapName + " ConfigMap in namespace " + namespace);
         }
-        return meshConfig.getDefaultConfig();
     }
 
     private static final Function<String, Properties> KEY_VALUE_TO_PROPERTIES = s -> {
