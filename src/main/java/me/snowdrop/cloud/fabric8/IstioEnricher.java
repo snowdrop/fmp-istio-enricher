@@ -2,20 +2,23 @@ package me.snowdrop.cloud.fabric8;
 
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
 import io.fabric8.kubernetes.api.model.*;
-import io.fabric8.kubernetes.api.model.extensions.DeploymentBuilder;
-import io.fabric8.kubernetes.api.model.extensions.ReplicaSetBuilder;
+import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.maven.core.access.ClusterAccess;
 import io.fabric8.maven.core.handler.DeploymentHandler;
 import io.fabric8.maven.core.handler.HandlerHub;
 import io.fabric8.maven.core.util.Configs;
 import io.fabric8.maven.core.util.MavenUtil;
-import io.fabric8.maven.docker.config.BuildImageConfiguration;
-import io.fabric8.maven.docker.config.ImageConfiguration;
 import io.fabric8.maven.enricher.api.BaseEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
 import io.fabric8.openshift.api.model.*;
+import me.snowdrop.cloud.fabric8.model.DefaultConfig;
+import me.snowdrop.cloud.fabric8.model.MeshConfig;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * This enricher takes care of adding <a href="https://isito.io">Istio</a> related enrichments to the Kubernetes Deployment
@@ -30,6 +33,7 @@ public class IstioEnricher extends BaseEnricher {
     private static final String ISTIO_ANNOTATION_STATUS = "injected-version-releng@0d29a2c0d15f-VERSION-998e0e00d375688bcb2af042fc81a60ce5264009";
     private final DeploymentHandler deployHandler;
     private String clusterName;
+    private KubernetesClient kubeClient;
 
     // Available configuration keys
     private enum Config implements Configs.Key {
@@ -37,6 +41,7 @@ public class IstioEnricher extends BaseEnricher {
         enabled("yes"),
         istioVersion("0.2.12"),
         istioNamespace("istio-system"),
+        istioConfigMapName("istio"),
         alpineVersion("3.5"),
         proxyName("istio-proxy"),
         proxyDockerImageName("docker.io/istio/proxy_debug"),
@@ -65,6 +70,7 @@ public class IstioEnricher extends BaseEnricher {
         super(buildContext, "fmp-istio-enricher");
         HandlerHub handlerHub = new HandlerHub(buildContext.getProject());
         deployHandler = handlerHub.getDeploymentHandler();
+        kubeClient = new ClusterAccess(getConfig(Config.istioNamespace)).createDefaultClient(log);
     }
 
     /*
@@ -214,14 +220,20 @@ public class IstioEnricher extends BaseEnricher {
 
         clusterName = getConfig(Config.name, MavenUtil.createDefaultResourceName(getProject()));
 
+        DefaultConfig config = fetchConfigMap(kubeClient, getConfig(Config.istioNamespace));
+
         String[] proxyArgs = ProxyArgs.findByRelease(getConfig(Config.istioVersion)).split(",");
         List<String> sidecarArgs = new ArrayList<>();
         for (int i = 0; i < proxyArgs.length; i++) {
             //cluster name defaults to app name a.k.a controller name
             if ("APP_CLUSTER_NAME".equalsIgnoreCase(proxyArgs[i])) {
                 sidecarArgs.add(clusterName);
-            } else if (proxyArgs[i].contains("ISTIO_NAMESPACE")) {
-                sidecarArgs.add(proxyArgs[i].replace("ISTIO_NAMESPACE",getConfig(Config.istioNamespace)));
+            } else if (proxyArgs[i].contains("ISTIO_PILOT_ADDRESS")) {
+                sidecarArgs.add(proxyArgs[i].replace("ISTIO_PILOT_ADDRESS",config.getDiscoveryAddress()));
+            } else if (proxyArgs[i].contains("ZIPKIN_ADDRESS")) {
+                sidecarArgs.add(proxyArgs[i].replace("ZIPKIN_ADDRESS",config.getZipkinAddress()));
+            } else if (proxyArgs[i].contains("MIXER_ADDRESS")) {
+                sidecarArgs.add(proxyArgs[i].replace("MIXER_ADDRESS",config.getStatsdUdpAddress()));
             } else {
                 sidecarArgs.add(proxyArgs[i]);
             }
@@ -322,6 +334,48 @@ public class IstioEnricher extends BaseEnricher {
         // Add ImageStreams about Istio Proxy, Istio Init and Core Dump
         builder.addAllToImageStreamItems(istioImageStream()).build();
     }
+
+    protected DefaultConfig fetchConfigMap(KubernetesClient kubeClient, String namespace) {
+
+        ConfigMap map = kubeClient.configMaps().withName(getConfig(Config.istioConfigMapName)).get();
+        Map<String, String> result = new HashMap<>();
+        MeshConfig meshConfig = new MeshConfig();;
+
+
+        if (map != null) {
+            for (Map.Entry<String, String> entry : map.getData().entrySet()) {
+                String key = entry.getKey();
+                String value = entry.getValue();
+                if (key.equals("mesh")) {
+                    result.putAll(KEY_VALUE_TO_PROPERTIES.andThen(PROPERTIES_TO_MAP).apply(value));
+
+                    DefaultConfig defaultConfig = new DefaultConfig();
+                    meshConfig.enableTracing = Boolean.parseBoolean(result.get("enableTracing"));
+                    defaultConfig.setDiscoveryAddress(result.get("discoveryAddress"));
+                    defaultConfig.setZipkinAddress(result.get("zipkinAddress"));
+                    defaultConfig.setStatsdUdpAddress(result.get("statsdUdpAddress"));
+                    meshConfig.setDefaultConfig(defaultConfig);
+                }
+            }
+        }
+        return meshConfig.getDefaultConfig();
+    }
+
+    private static final Function<String, Properties> KEY_VALUE_TO_PROPERTIES = s -> {
+        Properties properties = new Properties();
+        try {
+            properties.load(new ByteArrayInputStream(s.getBytes()));
+            return properties;
+        } catch (IOException e) {
+            throw new IllegalArgumentException();
+        }
+    };
+
+    private static final Function<Properties, Map<String,String>> PROPERTIES_TO_MAP = p -> p.entrySet().stream()
+            .collect(Collectors.toMap(
+                    e -> String.valueOf(e.getKey()),
+                    e -> String.valueOf(e.getValue())));
+
 
     /*
      *

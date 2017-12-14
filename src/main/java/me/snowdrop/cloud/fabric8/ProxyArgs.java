@@ -9,11 +9,11 @@ public enum ProxyArgs {
                             "--serviceCluster,APP_CLUSTER_NAME," +
                             "--drainDuration,45s," +
                             "--parentShutdownDuration,1m0s," +
-                            "--discoveryAddress,istio-pilot.ISTIO_NAMESPACE:8080," +
+                            "--discoveryAddress,ISTIO_PILOT_ADDRESS," +
                             "--discoveryRefreshDelay,1s," +
-                            "--zipkinAddress,zipkin.ISTIO_NAMESPACE:9411," +
+                            "--zipkinAddress,ZIPKIN_ADDRESS," +
                             "--connectTimeout,10s," +
-                            "--statsdUdpAddress,istio-mixer.ISTIO_NAMESPACE:9125," +
+                            "--statsdUdpAddress,MIXER_ADDRESS," +
                             "--proxyAdminPort,15000"),
 
     RELEASE_0_3_0("0.3.0",
