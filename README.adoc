@@ -3,7 +3,7 @@
 This Fabric8 maven plugin enricher API allows enriching the Openshift DeploymentConfig resource with Istio Proxy, Istio Init or Core Dump image and
 other needed triggers.
 
-Some parameters can be changed within the plugin's profile yaml or wihin the plugin xml part of the plugin.
+Some parameters can be changed within the plugin's profile yaml or within the pom xml part of the plugin definition.
 To, by example change the istio version to be used for the docker image to be used, then add this parameter within yiour profile
 
 [source,yaml]
