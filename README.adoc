@@ -16,6 +16,7 @@ To, by example change the istio version of the docker image, then add this param
 ----
 
 You can also tell to the enricher if you want to include the Core Dump container or the istio_debug image with these boolean values
+
 [source,yaml]
 ----
 - name: istio-spring-boot-profile
