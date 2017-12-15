@@ -417,23 +417,25 @@ public class IstioEnricher extends BaseEnricher {
                 .build();
         imageStreams.add(imageStreamBuilder.build());
 
-        imageStreamBuilder = new ImageStreamBuilder();
-        imageStreamBuilder
-                .withNewMetadata()
-                  .withName(getConfig(Config.coreDumpImageStreamName))
-                .endMetadata()
+        if ("yes".equalsIgnoreCase(getConfig(Config.enableCoreDump))) {
+            imageStreamBuilder = new ImageStreamBuilder();
+            imageStreamBuilder
+                 .withNewMetadata()
+                   .withName(getConfig(Config.coreDumpImageStreamName))
+                 .endMetadata()
 
-                .withNewSpec()
-                  .addNewTag()
-                  .withNewFrom()
-                    .withKind("DockerImage")
-                    .withName(getConfig(Config.coreDumpDockerImageName) + ":" + getConfig(Config.alpineVersion))
-                  .endFrom()
-                  .withName(getConfig(Config.alpineVersion))
-                  .endTag()
-                .endSpec()
-                .build();
-        imageStreams.add(imageStreamBuilder.build());
+                 .withNewSpec()
+                   .addNewTag()
+                   .withNewFrom()
+                     .withKind("DockerImage")
+                     .withName(getConfig(Config.coreDumpDockerImageName) + ":" + getConfig(Config.alpineVersion))
+                   .endFrom()
+                   .withName(getConfig(Config.alpineVersion))
+                   .endTag()
+                 .endSpec()
+                 .build();
+            imageStreams.add(imageStreamBuilder.build());
+        }
 
         imageStreamBuilder = new ImageStreamBuilder();
         imageStreamBuilder
