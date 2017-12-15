@@ -329,6 +329,20 @@ public class IstioEnricher extends BaseEnricher {
             triggers.add(trigger.build());
         }
 
+        // Add Trigger to include the Microservice app
+        trigger.withType("ImageChange")
+               .withNewImageChangeParams()
+                 .withAutomatic(true)
+                 .withNewFrom()
+                    .withKind("ImageStreamTag")
+                    .withName(clusterName + ":latest")
+                  .endFrom()
+                  .withContainerNames("spring-boot")
+               .endImageChangeParams()
+               .build();
+
+        triggers.add(trigger.build());
+
         return triggers;
     }
 
