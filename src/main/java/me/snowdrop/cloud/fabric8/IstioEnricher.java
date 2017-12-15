@@ -238,7 +238,7 @@ public class IstioEnricher extends BaseEnricher {
             public void visit(PodSpecBuilder podSpecBuilder) {
 
                     podSpecBuilder
-                            // Add Istio Proxy, Volumes and Secret
+                            // Add Istio Proxy
                             .addNewContainer()
                               .withName(getConfig(Config.proxyName))
                               .withResources(new ResourceRequirements())
@@ -254,8 +254,9 @@ public class IstioEnricher extends BaseEnricher {
                                     .build())
                               .withVolumeMounts(istioVolumeMounts())
                             .endContainer()
+                            // Specify Istio volumes
                             .withVolumes(istioVolumes())
-                            // Add Istio Init container and Core Dump
+                            // Add Istio Init container and Core Dump if enabled
                             .withInitContainers(populateInitContainers());
                 }
         });
