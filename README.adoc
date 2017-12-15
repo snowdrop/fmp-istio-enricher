@@ -15,6 +15,17 @@ To, by example change the istio version of the docker image, then add this param
         istioVersion: "0.2.12"
 ----
 
+You can also tell to the enricher if you want to include the Core Dump container or the istio_debug image with these boolean values
+[source,yaml]
+----
+- name: istio-spring-boot-profile
+  enricher:
+    config:
+      fmp-istio-enricher:
+        enableCoreDump: "false"
+        withDebugImage: "false"
+----
+
 The list of the by default parameters, as defined by the Istio project, is defined within the Istio `MeshConfig` and `DefaultConfig` java class.
 They will be overridden when the enricher will call the Kubernetes Api to get the Istio ConfigMap.
 

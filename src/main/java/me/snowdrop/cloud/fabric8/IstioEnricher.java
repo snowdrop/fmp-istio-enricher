@@ -40,13 +40,14 @@ public class IstioEnricher extends BaseEnricher {
     private enum Config implements Configs.Key {
         name("name"),
         enableCoreDump("yes"),
+        withDebugImage("true"),
         istioVersion("0.2.12"),
         istioNamespace("istio-system"),
         istioConfigMapName("istio"),
         alpineVersion("3.5"),
         proxyName("istio-proxy"),
-        proxyDockerImageName("docker.io/istio/proxy_debug"),
-        proxyImageStreamName("proxy_debug"),
+        proxyDockerImageName("docker.io/istio/proxy"),
+        proxyImageStreamName("proxy"),
         initName("istio-init"),
         initDockerImageName("docker.io/istio/proxy_init"),
         initImageStreamName("proxy_init"),
@@ -297,14 +298,14 @@ public class IstioEnricher extends BaseEnricher {
         imageStreamBuilder = new ImageStreamBuilder();
         imageStreamBuilder
                 .withNewMetadata()
-                  .withName(getConfig(Config.proxyImageStreamName))
+                  .withName(istioImageName(getConfig(Config.proxyImageStreamName)))
                 .endMetadata()
 
                 .withNewSpec()
                   .addNewTag()
                   .withNewFrom()
                     .withKind("DockerImage")
-                    .withName(getConfig(Config.proxyDockerImageName) + ":" + istioVersion)
+                    .withName(istioImageName(getConfig(Config.proxyDockerImageName)) + ":" + istioVersion)
                   .endFrom()
                   .withName(istioVersion)
                   .endTag()
@@ -313,6 +314,12 @@ public class IstioEnricher extends BaseEnricher {
         imageStreams.add(imageStreamBuilder.build());
 
         return imageStreams;
+    }
+
+    protected String istioImageName(String dockerImage) {
+        StringBuilder name = new StringBuilder(dockerImage);
+        name = "true".equalsIgnoreCase(getConfig(Config.withDebugImage)) ? name.append("_debug") : name;
+        return name.toString();
     }
 
     protected Container istioInitContainer() {
