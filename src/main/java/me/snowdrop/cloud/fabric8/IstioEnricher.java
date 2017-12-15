@@ -172,7 +172,7 @@ public class IstioEnricher extends BaseEnricher {
         triggers.add(trigger.build());
 
         // Add Core Dump image if enableCoreDump
-        if ("yes".equalsIgnoreCase(getConfig(Config.enableCoreDump))) {
+        if ("true".equalsIgnoreCase(getConfig(Config.enableCoreDump))) {
             trigger.withType("ImageChange")
                    .withNewImageChangeParams()
                      .withAutomatic(true)
@@ -209,7 +209,7 @@ public class IstioEnricher extends BaseEnricher {
         // Add Istio container which setup IPTABLES
         initcontainerList.add(istioInitContainer());
 
-        if ("yes".equalsIgnoreCase(getConfig(Config.enableCoreDump))) {
+        if ("true".equalsIgnoreCase(getConfig(Config.enableCoreDump))) {
             initcontainerList.add(coreDumpInitContainer());
         }
         return initcontainerList;
@@ -274,7 +274,7 @@ public class IstioEnricher extends BaseEnricher {
                 .build();
         imageStreams.add(imageStreamBuilder.build());
 
-        if ("yes".equalsIgnoreCase(getConfig(Config.enableCoreDump))) {
+        if ("true".equalsIgnoreCase(getConfig(Config.enableCoreDump))) {
             imageStreamBuilder = new ImageStreamBuilder();
             imageStreamBuilder
                  .withNewMetadata()
