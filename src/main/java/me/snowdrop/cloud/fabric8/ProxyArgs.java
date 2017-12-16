@@ -16,21 +16,10 @@ public enum ProxyArgs {
                    "--statsdUdpAddress,%s," +
                    "--proxyAdminPort,15000"),
 
-    RELEASE_0_3_0("0.3.0",
-                  "proxy,sidecar," +
-                  "-v,2," +
-                  "--configPath,/etc/istio/proxy," +
-                  "--binaryPath,/usr/local/bin/envoy," +
-                  "--serviceCluster,%s," +
-                  "--drainDuration,45s," +
-                  "--parentShutdownDuration,1m0s," +
-                  "--discoveryAddress,%s," +
-                  "--discoveryRefreshDelay,1s," +
-                  "--zipkinAddress,%s," +
-                  "--connectTimeout,10s," +
-                  "--statsdUdpAddress,%s," +
-                  "--proxyAdminPort,15000," +
-                  "--controlPlaneAuthPolicy,NONE");
+    RELEASE_0_3_0("0.3.0", RELEASE_0_2_12.args +
+                  "--controlPlaneAuthPolicy,NONE"),
+
+    RELEASE_0_4_0("0.4.0",RELEASE_0_3_0.args);
 
     private final String version;
     private final String args;
