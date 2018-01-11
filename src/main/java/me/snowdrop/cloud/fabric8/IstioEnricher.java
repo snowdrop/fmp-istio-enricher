@@ -233,6 +233,11 @@ public class IstioEnricher extends BaseEnricher {
         final String configMapName = getConfig(Config.istioConfigMapName);
         ConfigMap map = kubeClient.configMaps().withName(configMapName).get();
 
+        if(map == null) {
+            throw new IllegalArgumentException("Couldn't find an ConfigMap named "
+                    + configMapName + " in namespace " + namespace + ". Are you sure Istio was installed correctly?");
+        }
+
         final YAMLMapper mapper = new YAMLMapper();
         final String meshConfigAsString = map.getData().get("mesh");
         if(meshConfigAsString != null) {
