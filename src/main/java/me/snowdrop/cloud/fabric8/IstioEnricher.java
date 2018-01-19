@@ -165,7 +165,7 @@ public class IstioEnricher extends BaseEnricher {
                  .withAutomatic(true)
                  .withNewFrom()
                    .withKind("ImageStreamTag")
-                   .withName(getConfig(Config.proxyImageStreamName) + ":" + istioVersion)
+                   .withName(istioImageName(getConfig(Config.proxyImageStreamName)) + ":" + istioVersion)
                  .endFrom()
                  .withContainerNames(getConfig(Config.proxyName))
                .endImageChangeParams()
