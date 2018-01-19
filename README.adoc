@@ -101,3 +101,12 @@ Add the following fabric8-maven-plugin configuration to the project,
 <2> should be name that was used in the `profiles.yaml` above
 
 NOTE: This application right now uses SNAPSHOT version of fabric8-maven-plugin for probeMode
+
+== To release
+
+To release the snapshot of the project on Sonatype, please execute this command
+
+[source]
+----
+mvn clean source:jar deploy -Prelease
+----
