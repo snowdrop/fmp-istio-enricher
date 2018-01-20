@@ -41,19 +41,24 @@ public class IstioEnricher extends BaseEnricher {
         name("name"),
         enableCoreDump("yes"),
         withDebugImage("true"),
-        istioVersion("0.2.12"),
+        istioVersion("0.4.0"),
         istioNamespace("istio-system"),
         istioConfigMapName("istio"),
         alpineVersion("3.5"),
+        controlPlaneAuthPolicy("NONE"),
+
         proxyName("istio-proxy"),
         proxyDockerImageName("docker.io/istio/proxy"),
         proxyImageStreamName("proxy"),
+
         initName("istio-init"),
         initDockerImageName("docker.io/istio/proxy_init"),
         initImageStreamName("proxy_init"),
+
         coreDumpName("enable-core-dump"),
         coreDumpDockerImageName("alpine"),
         coreDumpImageStreamName("alpine"),
+
         imagePullPolicy("IfNotPresent"),
         replicaCount("1");
 
@@ -90,7 +95,14 @@ public class IstioEnricher extends BaseEnricher {
         final ProxyConfig config = meshConfig.getDefaultConfig();
 
         // replace placeholders in proxy args template
-        final String proxyArgs = String.format(proxyArgsTemplate, clusterName, config.getDiscoveryAddress(), config.getZipkinAddress(), config.getStatsdUdpAddress());
+        final String proxyArgs = String.format(
+                proxyArgsTemplate,
+                clusterName,
+                config.getDiscoveryAddress(),
+                config.getZipkinAddress(),
+                config.getStatsdUdpAddress(),
+                config.getControlPlaneAuthPolicy()
+        );
         List<String> sidecarArgs = Arrays.asList(proxyArgs.split(","));
 
         builder.accept(new TypedVisitor<PodSpecBuilder>() {
