@@ -12,6 +12,7 @@ import io.fabric8.maven.core.util.MavenUtil;
 import io.fabric8.maven.enricher.api.BaseEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
 import io.fabric8.openshift.api.model.*;
+import io.fabric8.utils.Strings;
 import me.snowdrop.istio.api.model.v1.mesh.MeshConfig;
 import me.snowdrop.istio.api.model.v1.mesh.ProxyConfig;
 
@@ -107,7 +108,7 @@ public class IstioEnricher extends BaseEnricher {
 
         builder.accept(new TypedVisitor<PodSpecBuilder>() {
             public void visit(PodSpecBuilder podSpecBuilder) {
-
+                    String serviceAccountName = getServiceAccountName(podSpecBuilder);
                     podSpecBuilder
                             // Add Istio Proxy
                             .addNewContainer()
@@ -126,7 +127,7 @@ public class IstioEnricher extends BaseEnricher {
                               .withVolumeMounts(istioVolumeMounts())
                             .endContainer()
                             // Specify Istio volumes
-                            .withVolumes(istioVolumes())
+                            .withVolumes(istioVolumes(serviceAccountName))
                             // Add Istio Init container and Core Dump if enabled
                             .withInitContainers(populateInitContainers());
                 }
@@ -333,6 +334,16 @@ public class IstioEnricher extends BaseEnricher {
         return imageStreams;
     }
 
+    private String getServiceAccountName(PodSpecBuilder podSpecBuilder) {
+        if (Strings.isNotBlank(podSpecBuilder.getServiceAccountName())) {
+            return podSpecBuilder.getServiceAccountName();
+        } else if (Strings.isNotBlank(podSpecBuilder.getServiceAccount())) {
+            return podSpecBuilder.getServiceAccount();
+        }
+
+        return "default";
+    }
+
     protected String istioImageName(String dockerImage) {
         StringBuilder name = new StringBuilder(dockerImage);
         name = "true".equalsIgnoreCase(getConfig(Config.withDebugImage)) ? name.append("_debug") : name;
@@ -439,7 +450,7 @@ public class IstioEnricher extends BaseEnricher {
      *
      * @return - list of {@link Volume}
      */
-    protected List<Volume> istioVolumes() {
+    protected List<Volume> istioVolumes(String serviceAccountName) {
         List<Volume> volumes = new ArrayList<>();
 
         VolumeBuilder empTyVolume = new VolumeBuilder();
@@ -453,7 +464,7 @@ public class IstioEnricher extends BaseEnricher {
         secretVolume
                 .withName("istio-certs")
                 .withSecret(new SecretVolumeSourceBuilder()
-                        .withSecretName("istio.default")
+                        .withSecretName("istio." + serviceAccountName)
                         .withDefaultMode(420)
                         .build())
                 .build();
