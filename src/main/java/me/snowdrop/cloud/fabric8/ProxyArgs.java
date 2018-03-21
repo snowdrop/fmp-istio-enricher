@@ -19,7 +19,11 @@ public enum ProxyArgs {
     RELEASE_0_3_0("0.3.0", RELEASE_0_2_12.args + "," +
                   "--controlPlaneAuthPolicy,%s"),
 
-    RELEASE_0_4_0("0.4.0",RELEASE_0_3_0.args);
+    RELEASE_0_4_0("0.4.0",RELEASE_0_3_0.args),
+    
+    RELEASE_0_5_0("0.5.0",RELEASE_0_4_0.args),
+    
+    RELEASE_0_6_0("0.6.0", RELEASE_0_5_0.args);
 
     private final String version;
     private final String args;
