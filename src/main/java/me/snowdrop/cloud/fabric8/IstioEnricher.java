@@ -1,8 +1,29 @@
 package me.snowdrop.cloud.fabric8;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
-import io.fabric8.kubernetes.api.model.*;
+import io.fabric8.kubernetes.api.model.CapabilitiesBuilder;
+import io.fabric8.kubernetes.api.model.ConfigMap;
+import io.fabric8.kubernetes.api.model.Container;
+import io.fabric8.kubernetes.api.model.ContainerBuilder;
+import io.fabric8.kubernetes.api.model.EmptyDirVolumeSourceBuilder;
+import io.fabric8.kubernetes.api.model.EnvVar;
+import io.fabric8.kubernetes.api.model.EnvVarSource;
+import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
+import io.fabric8.kubernetes.api.model.ObjectFieldSelector;
+import io.fabric8.kubernetes.api.model.PodSpecBuilder;
+import io.fabric8.kubernetes.api.model.ResourceRequirements;
+import io.fabric8.kubernetes.api.model.SecretVolumeSourceBuilder;
+import io.fabric8.kubernetes.api.model.SecurityContextBuilder;
+import io.fabric8.kubernetes.api.model.Volume;
+import io.fabric8.kubernetes.api.model.VolumeBuilder;
+import io.fabric8.kubernetes.api.model.VolumeMount;
+import io.fabric8.kubernetes.api.model.VolumeMountBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.maven.core.access.ClusterAccess;
 import io.fabric8.maven.core.handler.DeploymentHandler;
@@ -11,16 +32,14 @@ import io.fabric8.maven.core.util.Configs;
 import io.fabric8.maven.core.util.MavenUtil;
 import io.fabric8.maven.enricher.api.BaseEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
-import io.fabric8.openshift.api.model.*;
+import io.fabric8.openshift.api.model.DeploymentConfigBuilder;
+import io.fabric8.openshift.api.model.DeploymentTriggerPolicy;
+import io.fabric8.openshift.api.model.DeploymentTriggerPolicyBuilder;
+import io.fabric8.openshift.api.model.ImageStream;
+import io.fabric8.openshift.api.model.ImageStreamBuilder;
 import io.fabric8.utils.Strings;
 import me.snowdrop.istio.api.model.v1.mesh.MeshConfig;
 import me.snowdrop.istio.api.model.v1.mesh.ProxyConfig;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * This enricher takes care of adding <a href="https://isito.io">Istio</a> related enrichments to the Kubernetes Deployment
@@ -42,7 +61,7 @@ public class IstioEnricher extends BaseEnricher {
         name("name"),
         enableCoreDump("yes"),
         withDebugImage("true"),
-        istioVersion("0.4.0"),
+        istioVersion("0.6.0"),
         istioNamespace("istio-system"),
         istioConfigMapName("istio"),
         alpineVersion("3.5"),
