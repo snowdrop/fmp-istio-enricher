@@ -38,6 +38,7 @@ import io.fabric8.openshift.api.model.DeploymentTriggerPolicyBuilder;
 import io.fabric8.openshift.api.model.ImageStream;
 import io.fabric8.openshift.api.model.ImageStreamBuilder;
 import io.fabric8.utils.Strings;
+import me.snowdrop.istio.api.model.v1.mesh.AuthenticationPolicy;
 import me.snowdrop.istio.api.model.v1.mesh.MeshConfig;
 import me.snowdrop.istio.api.model.v1.mesh.ProxyConfig;
 
@@ -105,7 +106,7 @@ public class IstioEnricher extends BaseEnricher {
         // first check that we actually know the requested Istio version
         final String istioVersion = getConfig(Config.istioVersion);
         final String proxyArgsTemplate = ProxyArgs.findByRelease(istioVersion);
-        if(proxyArgsTemplate == null) {
+        if (proxyArgsTemplate == null) {
             throw new IllegalArgumentException("Unknown Istio release: " + istioVersion);
         }
 
@@ -114,6 +115,19 @@ public class IstioEnricher extends BaseEnricher {
         final MeshConfig meshConfig = fetchConfigMap(kubeClient, getConfig(Config.istioNamespace));
         final ProxyConfig config = meshConfig.getDefaultConfig();
 
+        // check that configured authentication policy matches what's in the configmap
+        final AuthenticationPolicy controlPlaneAuthPolicy = config.getControlPlaneAuthPolicy() == null ? AuthenticationPolicy.NONE : config.getControlPlaneAuthPolicy();
+        final String configuredControlPlaneAuthPolicy = getConfig(Config.controlPlaneAuthPolicy);
+        try {
+            AuthenticationPolicy policy = AuthenticationPolicy.valueOf(configuredControlPlaneAuthPolicy);
+            if (!controlPlaneAuthPolicy.equals(policy)) {
+                final String msg = "Configured AuthenticationPolicy %s via 'controlPlaneAuthPolicy' parameter doesn't match Istio ConfigMap configuration %s";
+                throw new IllegalArgumentException(String.format(msg, policy, controlPlaneAuthPolicy));
+            }
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unknown AuthenticationPolicy for 'controlPlaneAuthPolicy' parameter");
+        }
+
         // replace placeholders in proxy args template
         final String proxyArgs = String.format(
                 proxyArgsTemplate,
@@ -121,7 +135,7 @@ public class IstioEnricher extends BaseEnricher {
                 config.getDiscoveryAddress(),
                 config.getZipkinAddress(),
                 config.getStatsdUdpAddress(),
-                config.getControlPlaneAuthPolicy()
+                controlPlaneAuthPolicy.toString()
         );
         List<String> sidecarArgs = Arrays.asList(proxyArgs.split(","));
 
@@ -175,7 +189,7 @@ public class IstioEnricher extends BaseEnricher {
     }
 
     private List<DeploymentTriggerPolicy> populateTriggers(String istioVersion) {
-        List<DeploymentTriggerPolicy> triggers =  new ArrayList<>();
+        List<DeploymentTriggerPolicy> triggers = new ArrayList<>();
         DeploymentTriggerPolicyBuilder trigger = new DeploymentTriggerPolicyBuilder();
 
         // Add Istio Init Image
@@ -253,14 +267,14 @@ public class IstioEnricher extends BaseEnricher {
         final String configMapName = getConfig(Config.istioConfigMapName);
         ConfigMap map = kubeClient.configMaps().withName(configMapName).get();
 
-        if(map == null) {
+        if (map == null) {
             throw new IllegalArgumentException("Couldn't find an ConfigMap named "
                     + configMapName + " in namespace " + namespace + ". Are you sure Istio was installed correctly?");
         }
 
         final YAMLMapper mapper = new YAMLMapper();
         final String meshConfigAsString = map.getData().get("mesh");
-        if(meshConfigAsString != null) {
+        if (meshConfigAsString != null) {
             try {
                 final MeshConfig meshConfig = mapper.readValue(meshConfigAsString, MeshConfig.class);
 
