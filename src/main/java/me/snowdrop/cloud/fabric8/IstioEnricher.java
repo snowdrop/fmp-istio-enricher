@@ -109,6 +109,7 @@ public class IstioEnricher extends BaseEnricher {
         if (proxyArgsTemplate == null) {
             throw new IllegalArgumentException("Unknown Istio release: " + istioVersion);
         }
+        getLog().info("Using Istio version: " + istioVersion);
 
         clusterName = getConfig(Config.name, MavenUtil.createDefaultResourceName(getProject()));
 
