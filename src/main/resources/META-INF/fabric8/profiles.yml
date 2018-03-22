@@ -41,10 +41,6 @@
     - fmp-docker-registry-secret
     excludes:
     - fmp-openshift-route
-    config:
-      fmp-istio-enricher:
-        istioVersion: "0.4.0"
-        enableCoreDump: "false"
 
   generator:
     includes:
